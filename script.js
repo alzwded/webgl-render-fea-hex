@@ -28,6 +28,8 @@ const quads = [
     [2, 3, 7, 6],
     [3, 0, 4, 7]
 ]
+//for(let i = 0; i < 14; ++i) { quads = [...quads, ...quads] } // stressful test
+
 
 const maxa = 2.0
 // displacement xyz results per node
@@ -334,53 +336,58 @@ function main() {
     gl.enable(gl.DEPTH_TEST)
     gl.viewport(0, 0, canvas.width, canvas.height)
 
+    // ===== populate buffers with scene state =====
+    let prim = preproc();
+
+    // initialize our buffers
+    let coordsBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, coordsBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.coords), gl.STATIC_DRAW)
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+
+    let colorBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.disps), gl.STATIC_DRAW)
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+
+    let asBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, asBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.As), gl.STATIC_DRAW)
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+    let bsBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, bsBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.Bs), gl.STATIC_DRAW)
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+    let csBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, csBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.Cs), gl.STATIC_DRAW)
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+
+    let triaBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, triaBuffer)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(prim.trias), gl.STATIC_DRAW)
+    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null)
+
+    let texcoordBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.texcoords), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+
+    let cornersBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, cornersBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.corners), gl.STATIC_DRAW);
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+    // ===== scene populated =====
+
+
     // animation state
     let i = 0;
     (function loop() {
 
+        // load program
         gl.useProgram(program)
 
-        let prim = preproc();
-
-        // initialize our buffers
-        let coordsBuffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, coordsBuffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.coords), gl.STATIC_DRAW)
-        gl.bindBuffer(gl.ARRAY_BUFFER, null)
-
-        let colorBuffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.disps), gl.STATIC_DRAW)
-        gl.bindBuffer(gl.ARRAY_BUFFER, null)
-
-        let asBuffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, asBuffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.As), gl.STATIC_DRAW)
-        gl.bindBuffer(gl.ARRAY_BUFFER, null)
-        let bsBuffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, bsBuffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.Bs), gl.STATIC_DRAW)
-        gl.bindBuffer(gl.ARRAY_BUFFER, null)
-        let csBuffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, csBuffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.Cs), gl.STATIC_DRAW)
-        gl.bindBuffer(gl.ARRAY_BUFFER, null)
-
-        let triaBuffer = gl.createBuffer()
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, triaBuffer)
-        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(prim.trias), gl.STATIC_DRAW)
-        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null)
-
-        let texcoordBuffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.texcoords), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null)
-
-        let cornersBuffer = gl.createBuffer()
-        gl.bindBuffer(gl.ARRAY_BUFFER, cornersBuffer)
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.corners), gl.STATIC_DRAW);
-        gl.bindBuffer(gl.ARRAY_BUFFER, null)
-
+        // assign inputs
         gl.bindBuffer(gl.ARRAY_BUFFER, coordsBuffer)
         let aNode = 0
         gl.vertexAttribPointer(aNode, 3, gl.FLOAT, false, 0, 0)
@@ -421,7 +428,6 @@ function main() {
         gl.uniform1f(gl.getUniformLocation(program, "uMin"), prim.min)
         gl.uniform1f(gl.getUniformLocation(program, "uMax"), prim.max)
         gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), (i % 81) / 80)
-
 
         // Compute the matrices
         let aspect = canvas.clientWidth / gl.canvas.clientHeight
