@@ -29,16 +29,17 @@ const quads = [
     [3, 0, 4, 7]
 ]
 
+const maxa = 2.0
 // displacement xyz results per node
 const results = [
     [0.0, 0.0, 0.0     ] ,
     [0.0, 0.0, 0.0     ] ,
     [0.0, 0.0, 0.0     ] ,
     [0.0, 0.0, 0.0     ] ,
-    [-1.0, -1.0, 1.0   ] ,
-    [-1.0, 1.0, 1.0    ] ,
-    [1.0, 1.0, 1.0     ] ,
-    [1.0, -1.0, 1.0    ]
+    [-maxa, -maxa, maxa   ] ,
+    [-maxa, maxa, maxa    ] ,
+    [maxa, maxa, maxa     ] ,
+    [maxa, -maxa, maxa    ]
 ]
 
 const vShaderSrc = `#version 300 es 
@@ -60,27 +61,31 @@ out vec4 vCorners;
 
 out vec3 vCoord;
 out vec3 vNormal;
+
+uniform float uAnimationScaling;
 void main() {
   vTexCoord = aTexCoords;
+  vec4 corners = uAnimationScaling * aCorners;
   vCorners = vec4(
-    (aCorners.x - uMin)/(uMax - uMin),
-    (aCorners.y - uMin)/(uMax - uMin),
-    (aCorners.z - uMin)/(uMax - uMin),
-    (aCorners.w - uMin)/(uMax - uMin));
-  gl_Position = uMatrix * vec4(aNode + aDisplacement, 1.0);
+    (corners.x - uMin)/(uMax - uMin),
+    (corners.y - uMin)/(uMax - uMin),
+    (corners.z - uMin)/(uMax - uMin),
+    (corners.w - uMin)/(uMax - uMin));
+  vec3 displacement = uAnimationScaling * aDisplacement;
+  gl_Position = uMatrix * vec4(aNode + displacement, 1.0);
   vec3 ab = aB - aA;
   vec3 ac = aC - aA;
   vec4 quadNormalPreCamera = vec4(cross(normalize(ab), normalize(ac)), 0.0);
   vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * quadNormalPreCamera));
   vec3 lightDirection = normalize(vec3(3, -4, 5));
   float nDotL = max(dot(normal, lightDirection), 0.0);
-  const float toneDownLight = 0.99;
-  float diffuse = nDotL * 0.8 * toneDownLight;
-  float ambient = 0.2;
+  const float toneDownLight = 0.9;
+  float diffuse = nDotL * 0.7 * toneDownLight;
+  float ambient = 0.3;
   float ax = (diffuse + ambient);
   vOcolor = vec4(ax, ax, ax, 1.0);
 
-  vCoord =(uMatrix * vec4(aNode + aDisplacement, 1.0)).xyz;
+  vCoord =(uMatrix * vec4(aNode + displacement, 1.0)).xyz;
   vNormal = normal;
 }
 `
@@ -93,6 +98,8 @@ in vec4 vCorners;
 
 in vec3 vCoord;
 in vec3 vNormal;
+
+uniform float animationScaling;
 // cute texture mapping
 //uniform sampler2D uTexture;
 layout(location = 0) out vec4 fragColor;
@@ -117,7 +124,7 @@ void main() {
   //vec4 lighting = vOcolor;
   
   // map on a red-to-green axis
-  fragColor = vec4(lighting.x * p, lighting.y * (1.0-p), 0, 1.0);
+  fragColor = vec4(lighting.x * p, lighting.x * (1.0-p), 0.0, 1.0);
 }
 `
 
@@ -222,10 +229,18 @@ function preproc()
             results[quad[3]][0],
             results[quad[3]][1],
             results[quad[3]][2])
-        // XXX hardcoded min/max per component
-        // TODO do an accumulate for each displacement result and component
-        min = [-1, -1, 0, 0]
-        max = [1, 1, 1, 1.72]
+        min = [ 
+            results.reduce( (acc, v) => Math.min(acc, v[0]), 999999),
+            results.reduce( (acc, v) => Math.min(acc, v[1]), 999999),
+            results.reduce( (acc, v) => Math.min(acc, v[2]), 999999),
+            results.reduce( (acc, v) => Math.min(acc, Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])), 999999)
+        ]
+        max = [ 
+            results.reduce( (acc, v) => Math.max(acc, v[0]), -999999),
+            results.reduce( (acc, v) => Math.max(acc, v[1]), -999999),
+            results.reduce( (acc, v) => Math.max(acc, v[2]), -999999),
+            results.reduce( (acc, v) => Math.max(acc, Math.sqrt(v[0]*v[0]+v[1]*v[1]+v[2]*v[2])), 0)
+        ]
         let result = component
         if(result == 3) {
             let sqr = (x) => x*x;
@@ -405,6 +420,7 @@ function main() {
 
         gl.uniform1f(gl.getUniformLocation(program, "uMin"), prim.min)
         gl.uniform1f(gl.getUniformLocation(program, "uMax"), prim.max)
+        gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), (i % 81) / 80)
 
 
         // Compute the matrices
@@ -413,9 +429,9 @@ function main() {
         let matrix = m4.orthographic(-12, 12, -12, 12, -50, 50)
         matrix = m4.translate(matrix, -0.5,-0.5, -2.5)
         // XXX this will overflow at some point...
-        matrix = m4.xRotate(matrix, i * 0.1/5)
-        matrix = m4.yRotate(matrix, i * 0.3/5)
-        matrix = m4.zRotate(matrix, i * 0.05/5)
+        matrix = m4.xRotate(matrix, i * 0.05/9)
+        matrix = m4.yRotate(matrix, i * 0.3/9)
+        matrix = m4.zRotate(matrix, i * 0.01/9)
         matrix = m4.scale(matrix, 1.0, 1.0, 1.0)
 
         // Set the matrix.
