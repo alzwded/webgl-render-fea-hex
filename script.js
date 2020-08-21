@@ -92,6 +92,8 @@ void main() {
 
 const fShaderSrc = `#version 300 es 
 precision lowp float;
+layout(location = 0) out vec4 fragColor;
+
 in vec2 vTexCoord;
 in vec4 vOcolor;
 in vec4 vCorners;
@@ -99,10 +101,8 @@ in vec4 vCorners;
 in vec3 vCoord;
 in vec3 vNormal;
 
-uniform float animationScaling;
 // cute texture mapping
 //uniform sampler2D uTexture;
-layout(location = 0) out vec4 fragColor;
 void main() {
   // cute texture mapping
   //vec4 tmp = texture(uTexture, vTexCoord);
@@ -114,12 +114,12 @@ void main() {
   vec3 normal = normalize(vNormal);
   vec3 light = normalize(vec3(3,-4,5) - vCoord);
   vec3 V = -coord;
-  vec3 R = normalize(-light + vCoord);
-  float shiny = max(0.0, dot(-R, V));
-  //shiny = shiny * shiny * shiny * shiny;
-  //shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
+  vec3 R = normalize(light + vCoord);
+  float shiny = max(0.0, dot(R, normal));
+  shiny = shiny * shiny * shiny * shiny;
+  shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
 
-  vec4 lighting = vOcolor * 0.9 + vec4(shiny, shiny, shiny, 1.0) * 0.1;
+  vec4 lighting = vOcolor * 0.8 + vec4(shiny, shiny, shiny, 1.0) * 0.2;
   // end optional sexy lighting
   //vec4 lighting = vOcolor;
   
