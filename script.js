@@ -57,6 +57,9 @@ uniform mat4 uMatrix;
 out vec2 vTexCoord;
 out vec4 vOcolor;
 out vec4 vCorners;
+
+out vec3 vCoord;
+out vec3 vNormal;
 void main() {
   vTexCoord = aTexCoords;
   vCorners = vec4(
@@ -67,15 +70,18 @@ void main() {
   gl_Position = uMatrix * vec4(aNode + aDisplacement, 1.0);
   vec3 ab = aB - aA;
   vec3 ac = aC - aA;
-  vec4 quadNormalPreCamera = vec4(cross(normalize(ab), normalize(ac)), 1.0);
-  vec3 normal = normalize(vec3(uMatrix * quadNormalPreCamera));
-  vec3 lightDirection = normalize(vec3(-3, -4, 5));
+  vec4 quadNormalPreCamera = vec4(cross(normalize(ab), normalize(ac)), 0.0);
+  vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * quadNormalPreCamera));
+  vec3 lightDirection = normalize(vec3(3, -4, 5));
   float nDotL = max(dot(normal, lightDirection), 0.0);
-  const float toneDownLight = 0.8;
-  float diffuse = nDotL * 0.75 * toneDownLight;
-  float ambient = 0.25;
+  const float toneDownLight = 0.99;
+  float diffuse = nDotL * 0.8 * toneDownLight;
+  float ambient = 0.2;
   float ax = (diffuse + ambient);
   vOcolor = vec4(ax, ax, ax, 1.0);
+
+  vCoord =(uMatrix * vec4(aNode + aDisplacement, 1.0)).xyz;
+  vNormal = normal;
 }
 `
 
@@ -84,6 +90,9 @@ precision lowp float;
 in vec2 vTexCoord;
 in vec4 vOcolor;
 in vec4 vCorners;
+
+in vec3 vCoord;
+in vec3 vNormal;
 // cute texture mapping
 //uniform sampler2D uTexture;
 layout(location = 0) out vec4 fragColor;
@@ -92,8 +101,23 @@ void main() {
   //vec4 tmp = texture(uTexture, vTexCoord);
   // bilinear interpolation of our 4 corner nodes
   float p = mix(mix(vCorners.x, vCorners.w, vTexCoord.x), mix(vCorners.y, vCorners.z, vTexCoord.x), vTexCoord.y);
+
+  // optional sexy lighting
+  vec3 coord = normalize(vCoord);
+  vec3 normal = normalize(vNormal);
+  vec3 light = normalize(vec3(3,-4,5) - vCoord);
+  vec3 V = -coord;
+  vec3 R = normalize(-light + vCoord);
+  float shiny = max(0.0, dot(-R, V));
+  //shiny = shiny * shiny * shiny * shiny;
+  //shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
+
+  vec4 lighting = vOcolor * 0.9 + vec4(shiny, shiny, shiny, 1.0) * 0.1;
+  // end optional sexy lighting
+  //vec4 lighting = vOcolor;
+  
   // map on a red-to-green axis
-  fragColor = vec4(vOcolor.x * p, vOcolor.y * (1.0-p), 0, 1.0);
+  fragColor = vec4(lighting.x * p, lighting.y * (1.0-p), 0, 1.0);
 }
 `
 
