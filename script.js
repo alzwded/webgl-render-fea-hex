@@ -69,7 +69,7 @@ void main() {
   vec3 ac = aC - aA;
   vec4 quadNormalPreCamera = vec4(cross(normalize(ab), normalize(ac)), 1.0);
   vec3 normal = normalize(vec3(uMatrix * quadNormalPreCamera));
-  vec3 lightDirection = normalize(vec3(-1, -1, 3));
+  vec3 lightDirection = normalize(vec3(-3, -4, 5));
   float nDotL = max(dot(normal, lightDirection), 0.0);
   const float toneDownLight = 0.8;
   float diffuse = nDotL * 0.75 * toneDownLight;
