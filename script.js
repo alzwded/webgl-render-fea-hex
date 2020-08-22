@@ -1,8 +1,9 @@
 // app state: which component gets plotted
+var next = undefined
+var gl = undefined
+var program = undefined
 var component = 3;
-function setValue(n) {
-    component = n %4;
-}
+var animi = 0
 
 // nodes
 var nodes = [
@@ -20,7 +21,7 @@ var nodes = [
 nodes = nodes.map((e) => e.map((i) => i - 5));
 
 // oriented faces to be rendered
-const quads = [
+var quads = [
     [3, 2, 1, 0],
     [4, 5, 6, 7],
     [0, 1, 5, 4],
@@ -302,40 +303,7 @@ function preproc()
     }
 }
 
-
-function main() {
-    // initialize webgl
-    const canvas = document.getElementById('c')
-    const gl = canvas.getContext('webgl2')
-
-    if(gl === null) {
-        document.writeln('failed to get GL context')
-        return
-    }
-
-    // compile & link
-    let vShader = gl.createShader(gl.VERTEX_SHADER)
-    gl.shaderSource(vShader, vShaderSrc)
-    gl.compileShader(vShader)
-    if(!gl.getShaderParameter(vShader, gl.COMPILE_STATUS)) {
-        document.writeln('failed to compile vShader: ' + gl.getShaderInfoLog(vShader))
-    }
-    let fShader = gl.createShader(gl.FRAGMENT_SHADER)
-    gl.shaderSource(fShader, fShaderSrc)
-    gl.compileShader(fShader)
-    if(!gl.getShaderParameter(fShader, gl.COMPILE_STATUS)) {
-        document.writeln('failed to compile fShader: ' + gl.getShaderInfoLog(fShader))
-    }
-    let program = gl.createProgram()
-    gl.attachShader(program, vShader)
-    gl.attachShader(program, fShader)
-    gl.linkProgram(program)
-
-    // global stuff
-    gl.clearColor(1.0, 0.0, 1.0, 1.0)
-    gl.enable(gl.DEPTH_TEST)
-    gl.viewport(0, 0, canvas.width, canvas.height)
-
+function setup_scene() {
     // ===== populate buffers with scene state =====
     let prim = preproc();
 
@@ -381,8 +349,7 @@ function main() {
 
 
     // animation state
-    let i = 0;
-    (function loop() {
+    let loop = (function () {
 
         // load program
         gl.useProgram(program)
@@ -427,17 +394,17 @@ function main() {
 
         gl.uniform1f(gl.getUniformLocation(program, "uMin"), prim.min)
         gl.uniform1f(gl.getUniformLocation(program, "uMax"), prim.max)
-        gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), (i % 81) / 80)
+        gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), (animi % 81) / 80)
 
         // Compute the matrices
-        let aspect = canvas.clientWidth / gl.canvas.clientHeight
+        let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
         //let matrix = m4.perspective(60, aspect, -100, 100);
         let matrix = m4.orthographic(-12, 12, -12, 12, -50, 50)
         matrix = m4.translate(matrix, -0.5,-0.5, -2.5)
         // XXX this will overflow at some point...
-        matrix = m4.xRotate(matrix, i * 0.05/9)
-        matrix = m4.yRotate(matrix, i * 0.3/9)
-        matrix = m4.zRotate(matrix, i * 0.01/9)
+        matrix = m4.xRotate(matrix, animi * 0.05/9)
+        matrix = m4.yRotate(matrix, animi * 0.3/9)
+        matrix = m4.zRotate(matrix, animi * 0.01/9)
         matrix = m4.scale(matrix, 1.0, 1.0, 1.0)
 
         // Set the matrix.
@@ -457,11 +424,55 @@ function main() {
         gl.drawElements(gl.TRIANGLES, prim.trias.length, gl.UNSIGNED_SHORT, 0)
 
         // schedule an animation at some later date
-        requestAnimationFrame(loop)
-    })()
+        requestAnimationFrame(next)
+    })
+    next = loop
+    requestAnimationFrame(next)
+}
+
+
+function main() {
+    // initialize webgl
+    const canvas = document.getElementById('c')
+    gl = canvas.getContext('webgl2')
+
+    if(gl === null) {
+        document.writeln('failed to get GL context')
+        return
+    }
+
+    // compile & link
+    let vShader = gl.createShader(gl.VERTEX_SHADER)
+    gl.shaderSource(vShader, vShaderSrc)
+    gl.compileShader(vShader)
+    if(!gl.getShaderParameter(vShader, gl.COMPILE_STATUS)) {
+        document.writeln('failed to compile vShader: ' + gl.getShaderInfoLog(vShader))
+    }
+    let fShader = gl.createShader(gl.FRAGMENT_SHADER)
+    gl.shaderSource(fShader, fShaderSrc)
+    gl.compileShader(fShader)
+    if(!gl.getShaderParameter(fShader, gl.COMPILE_STATUS)) {
+        document.writeln('failed to compile fShader: ' + gl.getShaderInfoLog(fShader))
+    }
+    program = gl.createProgram()
+    gl.attachShader(program, vShader)
+    gl.attachShader(program, fShader)
+    gl.linkProgram(program)
+
+    // global stuff
+    gl.clearColor(1.0, 0.0, 1.0, 1.0)
+    gl.enable(gl.DEPTH_TEST)
+    gl.viewport(0, 0, canvas.width, canvas.height)
+
+    setup_scene()
 
     // bump animation state
-    setInterval(() => i = i + 1, 1000.0/60.0)
+    setInterval(() => animi = animi + 1, 1000.0/60.0)
+}
+
+function setValue(n) {
+    component = n %4;
+    next = setup_scene
 }
 
 window.onload = main
