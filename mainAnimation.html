@@ -17,33 +17,48 @@ layout (location = 2) in vec3 aA;
 layout (location = 3) in vec3 aB;
 layout (location = 4) in vec3 aC;
 layout (location = 5) in vec2 aTexCoords;
+// results on QUAD corner nodes
 layout (location = 6) in vec4 aCorners;
-// 0,1,2=x,y,z, 3=mag
+// global min/max for selected result, used for scaling to max range
 uniform float uMin;
 uniform float uMax;
+// model-view matrix
 uniform mat4 uMatrix;
+// texture coordinates
 out vec2 vTexCoord;
+// ambient+diffuse lighting
 out vec4 vOcolor;
+// normalized colors on each corner node
 out vec4 vCorners;
 
+// eye coordinates
 out vec3 vCoord;
+// quad normal
 out vec3 vNormal;
 
+// animation step; 0..1
 uniform float uAnimationScaling;
 void main() {
+  // forward texture coordinates
   vTexCoord = aTexCoords;
+  // scale result by animation step
   vec4 corners = uAnimationScaling * aCorners;
+  // normalize corner results
   vCorners = vec4(
     (corners.x - uMin)/(uMax - uMin),
     (corners.y - uMin)/(uMax - uMin),
     (corners.z - uMin)/(uMax - uMin),
     (corners.w - uMin)/(uMax - uMin));
+  // scale result by animation step
   vec3 displacement = uAnimationScaling * aDisplacement;
+  // write vertex position
   gl_Position = uMatrix * vec4(aNode + displacement, 1.0);
+  // compute quad normal
   vec3 ab = aB - aA;
   vec3 ac = aC - aA;
   vec4 quadNormalPreCamera = vec4(cross(normalize(ab), normalize(ac)), 0.0);
   vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * quadNormalPreCamera));
+  // compute diffuse lighting
   vec3 lightDirection = normalize(vec3(3, -4, 5));
   float nDotL = max(dot(normal, lightDirection), 0.0);
   const float toneDownLight = 0.9;
@@ -52,7 +67,9 @@ void main() {
   float ax = (diffuse + ambient);
   vOcolor = vec4(ax, ax, ax, 1.0);
 
+  // forward vertex position
   vCoord =(uMatrix * vec4(aNode + displacement, 1.0)).xyz;
+  // forward normal
   vNormal = normal;
 }
 </script>
@@ -61,10 +78,14 @@ precision lowp float;
 layout(location = 0) out vec4 fragColor;
 
 in vec2 vTexCoord;
+// ambient + diffuse lighting
 in vec4 vOcolor;
+// normalized corner values, for interpolation
 in vec4 vCorners;
 
+// eye coordinate
 in vec3 vCoord;
+// quad normal
 in vec3 vNormal;
 
 // cute texture mapping

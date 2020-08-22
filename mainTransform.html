@@ -13,34 +13,45 @@
 <input type="button" onclick="setDeformation(false)" value="Undeformed">
 <input type="button" onclick="setDeformation(true)" value="Show deformations">
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
+// coordinates
 layout (location = 0) in vec3 aNode;
+// displacement vector, full result
 layout (location = 1) in vec3 aDisplacement;
 // A,B&C are adjacent nodes on the quad to compute the face normal
 layout (location = 2) in vec3 aA;
 layout (location = 3) in vec3 aB;
 layout (location = 4) in vec3 aC;
+// values on a QUAD's corners for selected result
 layout (location = 5) in vec4 aCorners;
-// 0,1,2=x,y,z, 3=mag
+// global min/max for selected result; values will be re-distributed in 0..1
 uniform float uMin;
 uniform float uMax;
+// amount of deformation to apply to vertices
 uniform float uDeformation;
 
+// write quad normal
 out vec4 vNormal;
+// write normalized corner results
 out vec4 vCorners;
+// write vertex position after displacement
 out vec3 vDisplaced;
 void main() {
+  // normalize corner values
   vec4 corners = aCorners;
   vCorners = vec4(
     (corners.x - uMin)/(uMax - uMin),
     (corners.y - uMin)/(uMax - uMin),
     (corners.z - uMin)/(uMax - uMin),
     (corners.w - uMin)/(uMax - uMin));
+  // compute vertex position after displacement
   vec3 displacement = uDeformation * aDisplacement;
   vDisplaced = aNode + displacement;
-  gl_Position = vec4(vDisplaced, 1.0);
+  // compute normal
   vec3 ab = aB - aA;
   vec3 ac = aC - aA;
   vNormal = normalize(vec4(cross(normalize(ab), normalize(ac)), 0.0));
+  // write something to the pipeline
+  gl_Position = vec4(vDisplaced, 1.0);
 }
 </script>
 <script id="fTransform" type="x-shader/x-fragment">#version 300 es 
@@ -52,21 +63,30 @@ void main() {
 }
 </script>
 <script id="vRender" type="x-shader/x-vertex">#version 300 es 
+// coordinates
 layout (location = 0) in vec3 aDisplaced;
+// quad normal
 layout (location = 1) in vec4 aNormal;
+// quad corner values
 layout (location = 2) in vec4 aCorners;
+// texture coordinates
 layout (location = 3) in vec2 aTexCoords;
+// model-view matrix
 uniform mat4 uMatrix;
 out vec2 vTexCoord;
+// ambient + diffuse lighting
 out vec4 vOcolor;
 out vec4 vCorners;
-
 out vec3 vCoord;
 out vec3 vNormal;
 void main() {
+  // forward texture coordinates
   vTexCoord = aTexCoords;
+  // compute view projection
   gl_Position = uMatrix * vec4(aDisplaced, 1.0);
+  // compute view projection for our normal
   vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * aNormal));
+  // ambient + diffuse lighting
   vec3 lightDirection = normalize(vec3(3, -4, 5));
   float nDotL = max(dot(normal, lightDirection), 0.0);
   const float toneDownLight = 0.9;
@@ -75,6 +95,7 @@ void main() {
   float ax = (diffuse + ambient);
   vOcolor = vec4(ax, ax, ax, 1.0);
 
+  // forward stuff to fragment
   vCoord =(uMatrix * vec4(aDisplaced, 1.0)).xyz;
   vNormal = normal;
   vCorners = aCorners;
