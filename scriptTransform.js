@@ -317,6 +317,8 @@ function setup_scene() {
     
         gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uMin"), mmin)
         gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uMax"), mmax)
+        document.getElementById('min').innerHTML = mmin.toFixed(2)
+        document.getElementById('max').innerHTML = mmax.toFixed(2)
         gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uDeformation"), state.deformation ? 1.0 : 0.0)
 
         gl.enable(gl.RASTERIZER_DISCARD)

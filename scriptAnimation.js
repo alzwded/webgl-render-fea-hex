@@ -263,6 +263,8 @@ function setup_scene() {
 
     let mmin = prim.min
     let mmax = prim.max
+    document.getElementById('min').innerHTML = mmin.toFixed(2)
+    document.getElementById('max').innerHTML = mmax.toFixed(2)
     let mtriaslength = prim.trias.length
     prim = undefined
 

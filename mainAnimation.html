@@ -9,6 +9,9 @@
 <input type="button" onclick="setValue(1)" value="Y">
 <input type="button" onclick="setValue(2)" value="Z">
 <input type="button" onclick="setValue(3)" value="Magnitude">
+<br/>
+<p>Min: <span id="min" style="color:green"></span>mm</p>
+<p>Max: <span id="max" style="color:red"></span>mm</p>
 <script type="x-shader/x-vertex" id="vShader">#version 300 es 
 layout (location = 0) in vec3 aNode;
 layout (location = 1) in vec3 aDisplacement;

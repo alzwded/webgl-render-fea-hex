@@ -12,6 +12,9 @@
 <br/>
 <input type="button" onclick="setDeformation(false)" value="Undeformed">
 <input type="button" onclick="setDeformation(true)" value="Show deformations">
+<br/>
+<p>Min: <span id="min" style="color:green"></span>mm</p>
+<p>Max: <span id="max" style="color:red"></span>mm</p>
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
 // coordinates
 layout (location = 0) in vec3 aNode;
