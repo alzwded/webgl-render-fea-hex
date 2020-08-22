@@ -498,7 +498,7 @@ function main() {
     state.renderProgram = program
 
     // global stuff
-    gl.clearColor(1.0, 0.0, 1.0, 1.0)
+    gl.clearColor(1.0, 0.0, 1.0, 0.0)
     gl.enable(gl.DEPTH_TEST)
     gl.viewport(0, 0, canvas.width, canvas.height)
 
