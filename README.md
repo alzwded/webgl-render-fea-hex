@@ -1,7 +1,11 @@
 WebGL -- render FEA-style HEXA displacements
 ============================================
 
-**Question**: Can you compute vertex displacement and corner-node results interpolation in a shader?
+**Question**: Can you move a lot of display pre-processing code for FEA results from the CPU to the GPU?
+
+**Answer**: Yes? Anything particular in mind?
+
+**Question**: Can you compute vertex displacement and corner-node results interpolation in a shader, while animating?
 
 **Answer**: Yes, and with nice shading.
 
@@ -11,6 +15,8 @@ To make our lives easier
 Let's do away with the complexity of reading results, mapping them, a decomposing solids into faces. This program starts by having faces already computed, with normals facing outwards. It also assumes inner faces were already removed. It also assumes result-less faces were already removed.
 
 So let's hard-code the coordinates, face connectivity, and displacements.
+
+We'll be using WebGL2 with OpenGL ES 3.0 shaders (mostly because of the transform feedback bits)
 
 Animation
 ---------
@@ -34,6 +40,8 @@ Transform
 
 This program shows a rotation hex, with the ability to toggle between the deformed mesh or the undeformed mesh. Whenever the state changes, it recomputes color mapping from result to the red-green axis, normals and the position of the vertex after displacement.
 
+This allows us to compute displacements and normals once per state change (yay, caches!), and then re-use it. For animations, it could use the transform shader to render like 30 intermediate states, and then re-use the 30ish states later when animating in a loop.
+
 `main`: initializes webgl2, compiles & links programs, and setups up the animation
 
 `setup_scene`: initalizes gl buffers with the current scene data; i.e. "do you want to look at magnitude, x, y or z?". Passes control over to `render`
@@ -52,3 +60,10 @@ This program shows a rotation hex, with the ability to toggle between the deform
 `vRender`: apply view transformation, compute the normal relative to the current view, and compute ambient & diffuse lighting
 
 `fRender`: interpolate corner results over the whole face to compute color, and compute specular lighting to make it look more professional
+
+Conclusions
+-----------
+
+**Q**: Were you successful?
+
+**A**: Yeah, I think. I'd take the transform pipeline a bit further and split off the coordinate displacement calculation and result-to-color mapping because I still kinda copped and *did* compute deformations (redundantly) on the CPU, in order to pass off this info to the shader so it can do nice interpolation over the quad faces. But it's like 99% there. So yeah, `#successful`.
