@@ -45,92 +45,6 @@ const results = [
     [maxa, -maxa, maxa    ]
 ]
 
-const vShaderSrc = `#version 300 es 
-layout (location = 0) in vec3 aNode;
-layout (location = 1) in vec3 aDisplacement;
-// A,B&C are adjacent nodes on the quad to compute the face normal
-layout (location = 2) in vec3 aA;
-layout (location = 3) in vec3 aB;
-layout (location = 4) in vec3 aC;
-layout (location = 5) in vec2 aTexCoords;
-layout (location = 6) in vec4 aCorners;
-// 0,1,2=x,y,z, 3=mag
-uniform float uMin;
-uniform float uMax;
-uniform mat4 uMatrix;
-out vec2 vTexCoord;
-out vec4 vOcolor;
-out vec4 vCorners;
-
-out vec3 vCoord;
-out vec3 vNormal;
-
-uniform float uAnimationScaling;
-void main() {
-  vTexCoord = aTexCoords;
-  vec4 corners = uAnimationScaling * aCorners;
-  vCorners = vec4(
-    (corners.x - uMin)/(uMax - uMin),
-    (corners.y - uMin)/(uMax - uMin),
-    (corners.z - uMin)/(uMax - uMin),
-    (corners.w - uMin)/(uMax - uMin));
-  vec3 displacement = uAnimationScaling * aDisplacement;
-  gl_Position = uMatrix * vec4(aNode + displacement, 1.0);
-  vec3 ab = aB - aA;
-  vec3 ac = aC - aA;
-  vec4 quadNormalPreCamera = vec4(cross(normalize(ab), normalize(ac)), 0.0);
-  vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * quadNormalPreCamera));
-  vec3 lightDirection = normalize(vec3(3, -4, 5));
-  float nDotL = max(dot(normal, lightDirection), 0.0);
-  const float toneDownLight = 0.9;
-  float diffuse = nDotL * 0.7 * toneDownLight;
-  float ambient = 0.3;
-  float ax = (diffuse + ambient);
-  vOcolor = vec4(ax, ax, ax, 1.0);
-
-  vCoord =(uMatrix * vec4(aNode + displacement, 1.0)).xyz;
-  vNormal = normal;
-}
-`
-
-const fShaderSrc = `#version 300 es 
-precision lowp float;
-layout(location = 0) out vec4 fragColor;
-
-in vec2 vTexCoord;
-in vec4 vOcolor;
-in vec4 vCorners;
-
-in vec3 vCoord;
-in vec3 vNormal;
-
-// cute texture mapping
-//uniform sampler2D uTexture;
-void main() {
-  // cute texture mapping
-  //vec4 tmp = texture(uTexture, vTexCoord);
-  // bilinear interpolation of our 4 corner nodes
-  float p = mix(mix(vCorners.x, vCorners.w, vTexCoord.x), mix(vCorners.y, vCorners.z, vTexCoord.x), vTexCoord.y);
-
-  // optional sexy lighting
-  vec3 coord = normalize(vCoord);
-  vec3 normal = normalize(vNormal);
-  vec3 light = normalize(vec3(3,-4,5) - vCoord);
-  vec3 V = -coord;
-  vec3 R = normalize(light + vCoord);
-  float shiny = max(0.0, dot(R, normal));
-  shiny = shiny * shiny * shiny * shiny;
-  shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
-
-  vec4 lighting = vOcolor * 0.8 + vec4(shiny, shiny, shiny, 1.0) * 0.2;
-  // end optional sexy lighting
-  //vec4 lighting = vOcolor;
-  
-  // map on a red-to-green axis
-  fragColor = vec4(lighting.x * p, lighting.x * (1.0-p), 0.0, 1.0);
-}
-`
-
 // preproc high-level face-based geometry to openGL triangles, vectors, texcoords
 function preproc()
 {
@@ -347,6 +261,10 @@ function setup_scene() {
     gl.bindBuffer(gl.ARRAY_BUFFER, null)
     // ===== scene populated =====
 
+    let mmin = prim.min
+    let mmax = prim.max
+    let mtriaslength = prim.trias.length
+    prim = undefined
 
     // animation state
     let loop = (function () {
@@ -392,8 +310,8 @@ function setup_scene() {
 
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, triaBuffer)
 
-        gl.uniform1f(gl.getUniformLocation(program, "uMin"), prim.min)
-        gl.uniform1f(gl.getUniformLocation(program, "uMax"), prim.max)
+        gl.uniform1f(gl.getUniformLocation(program, "uMin"), mmin)
+        gl.uniform1f(gl.getUniformLocation(program, "uMax"), mmax)
         gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), (animi % 81) / 80)
 
         // Compute the matrices
@@ -421,7 +339,9 @@ function setup_scene() {
 
         // draw
         gl.clear(gl.COLOR_BUFFER_BIT)
-        gl.drawElements(gl.TRIANGLES, prim.trias.length, gl.UNSIGNED_SHORT, 0)
+        gl.drawElements(gl.TRIANGLES, mtriaslength, gl.UNSIGNED_SHORT, 0)
+
+        //console.log((new Date()).getMilliseconds())
 
         // schedule an animation at some later date
         requestAnimationFrame(next)
@@ -443,13 +363,13 @@ function main() {
 
     // compile & link
     let vShader = gl.createShader(gl.VERTEX_SHADER)
-    gl.shaderSource(vShader, vShaderSrc)
+    gl.shaderSource(vShader, document.getElementById('vShader').textContent)
     gl.compileShader(vShader)
     if(!gl.getShaderParameter(vShader, gl.COMPILE_STATUS)) {
         document.writeln('failed to compile vShader: ' + gl.getShaderInfoLog(vShader))
     }
     let fShader = gl.createShader(gl.FRAGMENT_SHADER)
-    gl.shaderSource(fShader, fShaderSrc)
+    gl.shaderSource(fShader, document.getElementById('fShader').textContent)
     gl.compileShader(fShader)
     if(!gl.getShaderParameter(fShader, gl.COMPILE_STATUS)) {
         document.writeln('failed to compile fShader: ' + gl.getShaderInfoLog(fShader))

@@ -275,6 +275,12 @@ function setup_scene() {
     gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, transformBuffer);
     gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null)
 
+    let mmin = prim.min
+    let mmax = prim.max
+    let mcoordslength = prim.coords.length
+    let mtriaslength = prim.trias.length
+    prim = undefined
+
     state.render = (() => {
         gl.useProgram(state.transformProgram)
  
@@ -309,14 +315,14 @@ function setup_scene() {
         gl.vertexAttribPointer(aCorners, 4, gl.FLOAT, false, 0, 0)
         gl.enableVertexAttribArray(aCorners)
     
-        gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uMin"), prim.min)
-        gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uMax"), prim.max)
+        gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uMin"), mmin)
+        gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uMax"), mmax)
         gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uDeformation"), state.deformation ? 1.0 : 0.0)
 
         gl.enable(gl.RASTERIZER_DISCARD)
         gl.beginTransformFeedback(gl.TRIANGLES)
 
-        gl.drawArrays(gl.TRIANGLES, 0, prim.coords.length)
+        gl.drawArrays(gl.TRIANGLES, 0, mcoordslength)
 
         gl.endTransformFeedback()
         gl.disable(gl.RASTERIZER_DISCARD)
@@ -324,7 +330,7 @@ function setup_scene() {
 
         // read results
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, transformBuffer)
-        let bigData = new Float32Array((prim.coords.length * 4  + prim.coords.length * 4 + prim.coords.length * 3))
+        let bigData = new Float32Array((mcoordslength * 4  + mcoordslength * 4 + mcoordslength * 3))
         gl.getBufferSubData(gl.TRANSFORM_FEEDBACK_BUFFER, 0, bigData)
         // vNormal vCorners vDisplaced vNormal vCorners vDisplaced........
         gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null)
@@ -332,7 +338,7 @@ function setup_scene() {
         let cornersData = []
         let displacedData = []
         let normalsData = []
-        for(let i = 0; i < prim.coords.length / 3; ++i) {
+        for(let i = 0; i < mcoordslength / 3; ++i) {
             normalsData.push(
                 bigData[i * 11 + 0],
                 bigData[i * 11 + 1],
@@ -365,7 +371,6 @@ function setup_scene() {
         gl.bindBuffer(gl.ARRAY_BUFFER, tNormalsBuffer)
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(normalsData), gl.STATIC_DRAW)
         gl.bindBuffer(gl.ARRAY_BUFFER, null)
-
 
         let loop = function _loop() {
             let gl = state.gl
@@ -420,8 +425,9 @@ function setup_scene() {
     
             // draw
             gl.clear(gl.COLOR_BUFFER_BIT)
-            gl.drawElements(gl.TRIANGLES, prim.trias.length, gl.UNSIGNED_SHORT, 0)
+            gl.drawElements(gl.TRIANGLES, mtriaslength, gl.UNSIGNED_SHORT, 0)
 
+            //console.log((new Date()).getMilliseconds())
             requestAnimationFrame(state.next)
         }
         // schedule an animation at some later date
