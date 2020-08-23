@@ -314,7 +314,11 @@ function setup_scene() {
 
         gl.uniform1f(gl.getUniformLocation(program, "uMin"), mmin)
         gl.uniform1f(gl.getUniformLocation(program, "uMax"), mmax)
-        gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), (animi % 81) / 80)
+        if(animi % 100 < 81) {
+            gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), (animi % 100) / 80)
+        } else {
+            gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), 1.0)
+        }
 
         // Compute the matrices
         let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
