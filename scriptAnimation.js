@@ -4,6 +4,7 @@ var gl = undefined
 var program = undefined
 var component = 3;
 var animi = 0
+var colorAxisType = 1;
 
 // nodes
 var nodes = [
@@ -319,6 +320,7 @@ function setup_scene() {
         } else {
             gl.uniform1f(gl.getUniformLocation(program, "uAnimationScaling"), 1.0)
         }
+        gl.uniform1i(gl.getUniformLocation(program, "uColorAxisType"), colorAxisType)
 
         // Compute the matrices
         let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
@@ -399,6 +401,11 @@ function main() {
 function setValue(n) {
     component = n %4;
     next = setup_scene
+}
+
+function setColorAxis(n) {
+    colorAxisType = n;
+    document.getElementById('min').style.color = ['green', 'blue'][n];
 }
 
 window.onload = main

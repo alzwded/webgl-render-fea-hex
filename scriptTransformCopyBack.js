@@ -4,7 +4,8 @@ var state = {
     deformation: true,
     animframe: 0,
     next: undefined,
-    render: undefined
+    render: undefined,
+    colorAxisType: 1
 }
 
 // nodes
@@ -415,6 +416,7 @@ function setup_scene() {
     
             // Set the matrix.
             gl.uniformMatrix4fv(gl.getUniformLocation(state.renderProgram, "uMatrix"), false, matrix);
+            gl.uniform1i(gl.getUniformLocation(state.renderProgram, "uColorAxisType"), state.colorAxisType)
     
             // cute texture mapping
             //let texture = gl.createTexture();
@@ -518,6 +520,10 @@ function setValue(n) {
 function setDeformation(b) {
     state.deformation = b;
     state.next = state.render
+}
+function setColorAxis(n) {
+    state.colorAxisType = n;
+    document.getElementById('min').style.color = ['green', 'blue'][n];
 }
 
 window.onload = main
