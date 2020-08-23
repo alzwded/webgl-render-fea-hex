@@ -437,7 +437,7 @@ function setup_scene() {
         requestAnimationFrame(state.next)
     })
     state.next = state.render
-    requestAnimationFrame(state.next)
+    state.next()
 }
 
 
