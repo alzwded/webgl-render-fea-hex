@@ -35,10 +35,10 @@ This program shows a rotating hex, with deformation being animated over like 1.2
 
 `fShader`: interpolate corner results over the whole face to compute color, and compute specular lighting to make it look more professional
 
-Transform
----------
+Transform - Copy Back
+----------------------
 
-This program shows a rotation hex, with the ability to toggle between the deformed mesh or the undeformed mesh. Whenever the state changes, it recomputes color mapping from result to the red-green axis, normals and the position of the vertex after displacement.
+This program shows a rotation hex, with the ability to toggle between the deformed mesh or the undeformed mesh. Whenever the state changes, it recomputes color mapping from result to the red-green axis, normals and the position of the vertex after displacement. Those intermediate results are copied back to CPU RAM from VRAM.
 
 This allows us to compute displacements and normals once per state change (yay, caches!), and then re-use it. For animations, it could use the transform shader to render like 30 intermediate states, and then re-use the 30ish states later when animating in a loop.
 
@@ -60,6 +60,19 @@ This allows us to compute displacements and normals once per state change (yay, 
 `vRender`: apply view transformation, compute the normal relative to the current view, and compute ambient & diffuse lighting
 
 `fRender`: interpolate corner results over the whole face to compute color, and compute specular lighting to make it look more professional
+
+Transform - Stream
+------------------
+
+This functionally does the same thing as *Transform - Copy Back*, but without the copy part. Instead, it keeps those results in VRAM.
+
+Why would you want Copy Back over Stream (or vice versa?). The Stream method relies on separate transform buffers, of which there is a limitted amount (the standard says *at least* 4; so max 4). The reason we need separate transform buffers, is because they need to end up looking like array buffers.
+
+The interleaved type ~~out~~sideput effectively writes an array of structs. Vertex shaders require input to be a struct of arrays, so that doesn't work if you're saving more than one attribute. So you either need to copy back a big interleaved transform buffer, or have separate shaders to compute at most 4 transfer attribute buffers at a time.
+
+In the end, it depends on if you *have to* copy back from VRAM into main RAM, or if you *don't* have to copy back *and* you have enough resources to keep everything in VRAM.
+
+In desktop OGL, and given recent enough GPUs, you can get the transfer buffers to be in shared RAM, which allows you to shift things as needed, but I've been told main RAM is slower than VRAM when it comes to GPU things.
 
 Conclusions
 -----------
