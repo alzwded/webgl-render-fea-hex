@@ -342,7 +342,7 @@ function setup_scene() {
 
         gl.endTransformFeedback()
         gl.disable(gl.RASTERIZER_DISCARD)
-        gl.flush();
+        //gl.flush();
 
         // unbind transform buffers
         gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
@@ -402,7 +402,7 @@ function setup_scene() {
             //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     
             // draw
-            gl.clear(gl.COLOR_BUFFER_BIT)
+            gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT)
             gl.drawElements(gl.TRIANGLES, mtriaslength, gl.UNSIGNED_SHORT, 0)
 
             //console.log((new Date()).getMilliseconds())
@@ -410,7 +410,7 @@ function setup_scene() {
         }
         // schedule an animation at some later date
         state.next = loop
-        requestAnimationFrame(state.next)
+        state.next()
     })
     state.next = state.render
     state.next()
