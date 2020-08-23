@@ -13,7 +13,7 @@
 <input type="button" onclick="setDeformation(false)" value="Undeformed">
 <input type="button" onclick="setDeformation(true)" value="Show deformations">
 <br/>
-<p>Min: <span id="min" style="color:green"></span>mm</p>
+<p>Min: <span id="min" style="color:blue"></span>mm</p>
 <p>Max: <span id="max" style="color:red"></span>mm</p>
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
 // coordinates
@@ -115,6 +115,12 @@ in vec4 vCorners;
 in vec3 vCoord;
 in vec3 vNormal;
 
+float f(float n, float h, float s, float l) {
+    float k = mod(n + h*360.0/30.0, 12.0);
+    float a = s * min(l, 1.0 - l);
+    return l - a * max(-1.0, min(min(k - 3.0, 9.0 - k), 1.0));
+}
+
 // cute texture mapping
 //uniform sampler2D uTexture;
 void main() {
@@ -138,7 +144,14 @@ void main() {
   //vec4 lighting = vOcolor;
   
   // map on a red-to-green axis
-  fragColor = vec4(lighting.x * p, lighting.x * (1.0-p), 0.0, 1.0);
+  //fragColor = vec4(lighting.x * p, lighting.x * (1.0-p), 0.0, 1.0);
+  // map to a rainbox color axis
+  p = 2.0 * p - 1.0;
+  p = (sin(3.14159 / 2.0 * p) + 1.0)  / 2.0;
+  float h = (1.0 - p) * 120.0/180.0;
+  float l = lighting.x * 0.5;
+  float s = 1.0;
+  fragColor = vec4(f(0.0, h, s, l), f(8.0, h, s, l), f(4.0, h, s, l), 1.0);
 }
 </script>
 <script type="text/javascript" src="m4.js"></script>
