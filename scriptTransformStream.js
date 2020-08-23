@@ -344,6 +344,11 @@ function setup_scene() {
         gl.disable(gl.RASTERIZER_DISCARD)
         gl.flush();
 
+        // unbind transform buffers
+        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
+        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 1, null);
+        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 2, null);
+
         let loop = function _loop() {
             let gl = state.gl
             // load program
