@@ -324,17 +324,29 @@ function setup_scene() {
 
         // Compute the matrices
         let aspect = gl.canvas.clientWidth / gl.canvas.clientHeight
-        //let matrix = m4.perspective(60, aspect, -100, 100);
-        let matrix = m4.orthographic(-12, 12, -12, 12, -50, 50)
-        matrix = m4.translate(matrix, -0.5,-0.5, -2.5)
+        // model matrix
+        let matrix = m4.identity()
         // XXX this will overflow at some point...
         matrix = m4.xRotate(matrix, animi * 0.05/9)
         matrix = m4.yRotate(matrix, animi * 0.3/9)
         matrix = m4.zRotate(matrix, animi * 0.01/9)
         matrix = m4.scale(matrix, 1.0, 1.0, 1.0)
-
+        let lightPos = m4.scaleVector([1,-1, -3], 8)
+        let viewMatrix = m4.translate(m4.identity(), 0, 0, -24)
+        // apply view matrix to get model-view matrix
+        matrix = m4.multiply(viewMatrix, matrix)
+        // projection matrix
+        let mvpMatrix = m4.perspective(3.14159/3, aspect, 0.1, 100)
+        // apply projection matrix to get projection-model-view matrix
+        mvpMatrix = m4.multiply(mvpMatrix, matrix)
+        
+    
         // Set the matrix.
         gl.uniformMatrix4fv(gl.getUniformLocation(program, "uMatrix"), false, matrix);
+        gl.uniformMatrix4fv(gl.getUniformLocation(program, "uMVP"), false, mvpMatrix);
+        gl.uniform3fv(gl.getUniformLocation(program, "uLight"), lightPos);
+        gl.uniform1i(gl.getUniformLocation(program, "uColorAxisType"), colorAxisType)
+    
 
         // cute texture mapping
         //let texture = gl.createTexture();

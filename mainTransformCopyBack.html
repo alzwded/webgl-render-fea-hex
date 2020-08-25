@@ -79,21 +79,27 @@ layout (location = 2) in vec4 aCorners;
 layout (location = 3) in vec2 aTexCoords;
 // model-view matrix
 uniform mat4 uMatrix;
+// model-view-projection matrix
+uniform mat4 uMVP;
+// light source
+uniform vec3 uLight;
 out vec2 vTexCoord;
 // ambient + diffuse lighting
 out vec4 vOcolor;
 out vec4 vCorners;
 out vec3 vCoord;
 out vec3 vNormal;
+out vec3 vLight;
 void main() {
   // forward texture coordinates
   vTexCoord = aTexCoords;
   // compute view projection
-  gl_Position = uMatrix * vec4(aDisplaced, 1.0);
+  gl_Position = uMVP * vec4(aDisplaced, 1.0);
   // compute view projection for our normal
   vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * aNormal));
   // ambient + diffuse lighting
-  vec3 lightDirection = normalize(vec3(3, -4, 5));
+  vLight = uLight;
+  vec3 lightDirection = normalize(uLight);
   float nDotL = max(dot(normal, lightDirection), 0.0);
   const float toneDownLight = 0.9;
   float diffuse = nDotL * 0.7 * toneDownLight;
@@ -117,6 +123,7 @@ in vec4 vCorners;
 
 in vec3 vCoord;
 in vec3 vNormal;
+in vec3 vLight;
 
 uniform int uColorAxisType;
 
@@ -135,13 +142,11 @@ void main() {
   float p = mix(mix(vCorners.x, vCorners.w, vTexCoord.x), mix(vCorners.y, vCorners.z, vTexCoord.x), vTexCoord.y);
 
   // optional sexy lighting
-  vec3 coord = normalize(vCoord);
   vec3 normal = normalize(vNormal);
-  vec3 light = normalize(vec3(3,-4,5) - vCoord);
-  vec3 V = -coord;
-  vec3 R = normalize(light + vCoord);
-  float shiny = max(0.0, dot(R, normal));
-  shiny = shiny * shiny * shiny * shiny;
+  vec3 light = normalize(vLight - vCoord);
+  vec3 V = normalize(vCoord);
+  vec3 H = normalize(light + V);
+  float shiny = max(0.0, dot(H, normal));
   shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
 
   vec4 lighting = vOcolor * 0.8 + vec4(shiny, shiny, shiny, 1.0) * 0.2;
@@ -160,6 +165,8 @@ void main() {
     float s = 1.0;
     fragColor = vec4(f(0.0, h, s, l), f(8.0, h, s, l), f(4.0, h, s, l), 1.0);
   }
+  // debug specular lighting
+  //fragColor = vec4(shiny, shiny, 0, 1);
 }
 </script>
 <script type="text/javascript" src="m4.js"></script>

@@ -30,6 +30,10 @@ uniform float uMin;
 uniform float uMax;
 // model-view matrix
 uniform mat4 uMatrix;
+// model-view-projection matrix
+uniform mat4 uMVP;
+// light source
+uniform vec3 uLight;
 // texture coordinates
 out vec2 vTexCoord;
 // ambient+diffuse lighting
@@ -41,6 +45,8 @@ out vec4 vCorners;
 out vec3 vCoord;
 // quad normal
 out vec3 vNormal;
+// light
+out vec3 vLight;
 
 // animation step; 0..1
 uniform float uAnimationScaling;
@@ -58,14 +64,14 @@ void main() {
   // scale result by animation step
   vec3 displacement = uAnimationScaling * aDisplacement;
   // write vertex position
-  gl_Position = uMatrix * vec4(aNode + displacement, 1.0);
+  gl_Position = uMVP * vec4(aNode + displacement, 1.0);
   // compute quad normal
   vec3 ab = aB - aA;
   vec3 ac = aC - aA;
   vec4 quadNormalPreCamera = vec4(cross(normalize(ab), normalize(ac)), 0.0);
   vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * quadNormalPreCamera));
   // compute diffuse lighting
-  vec3 lightDirection = normalize(vec3(3, -4, 5));
+  vec3 lightDirection = normalize(uLight);
   float nDotL = max(dot(normal, lightDirection), 0.0);
   const float toneDownLight = 0.9;
   float diffuse = nDotL * 0.7 * toneDownLight;
@@ -77,6 +83,8 @@ void main() {
   vCoord =(uMatrix * vec4(aNode + displacement, 1.0)).xyz;
   // forward normal
   vNormal = normal;
+  // forward light
+  vLight = uLight;
 }
 </script>
 <script type="x-shader/x-fragment" id="fShader">#version 300 es 
@@ -93,6 +101,8 @@ in vec4 vCorners;
 in vec3 vCoord;
 // quad normal
 in vec3 vNormal;
+// light
+in vec3 vLight;
 
 uniform int uColorAxisType;
 
@@ -112,13 +122,11 @@ void main() {
   float p = mix(mix(vCorners.x, vCorners.w, vTexCoord.x), mix(vCorners.y, vCorners.z, vTexCoord.x), vTexCoord.y);
 
   // optional sexy lighting
-  vec3 coord = normalize(vCoord);
   vec3 normal = normalize(vNormal);
-  vec3 light = normalize(vec3(3,-4,5) - vCoord);
-  vec3 V = -coord;
-  vec3 R = normalize(light + vCoord);
-  float shiny = max(0.0, dot(R, normal));
-  shiny = shiny * shiny * shiny * shiny;
+  vec3 light = normalize(vLight - vCoord);
+  vec3 V = normalize(vCoord);
+  vec3 H = normalize(light + V);
+  float shiny = max(0.0, dot(H, normal));
   shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
 
   vec4 lighting = vOcolor * 0.8 + vec4(shiny, shiny, shiny, 1.0) * 0.2;
@@ -137,6 +145,8 @@ void main() {
     float s = 1.0;
     fragColor = vec4(f(0.0, h, s, l), f(8.0, h, s, l), f(4.0, h, s, l), 1.0);
   }
+  // debug specular lighting
+  //fragColor = vec4(shiny, shiny, 0, 1);
 }
 </script>
 <script type="text/javascript" src="m4.js"></script>
