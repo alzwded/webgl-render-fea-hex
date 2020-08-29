@@ -21,10 +21,18 @@ var quads
 // displacement xyz results per node
 var results
 
+let fakePromise = (fn) => {
+    return new Promise( (resolve) => {
+        setTimeout(async () => {
+            await fn()
+            setTimeout(resolve, 1)
+        }, 0)
+    });
+};
+
 // preproc high-level face-based geometry to openGL triangles, vectors, texcoords
-async function preproc()
+function preproc()
 {
-    document.getElementById('progress').innerHTML = 'Loading -- generating WebGL scene'
     // nodal coordinates as passed to opengl
     let coords = []
     // 3 corner nodes of a face to compute the face normal in the shader
@@ -168,8 +176,6 @@ async function preproc()
         // pick the appropriate min/max per the selected component
         max = max[result]
         min = min[result]
-            
-        await ((async () => {})())
     }
 
     document.getElementById('progress').innerHTML = ''
@@ -521,14 +527,16 @@ function main() {
             });
             reader.readAsArrayBuffer(blob)
         });
-    }).then( async (hexas) => {
+    }).then( (hexas) => {
         document.getElementById('progress').innerHTML = 'Determining visible faces'
-        //    7    6
-        // 4    5
-        //    3    2
-        // 0    1
+        return hexas
+    }).then( async (hexas) => {
+        //  ,.7----6
+        // 4----5-'|
+        // |,.3-|--2
+        // 0----1-'
         let faces = {}
-        async function pushQuad( quad ) {
+        function pushQuad( quad ) {
             let sorted = [...quad]
             sorted.sort()
             if(sorted in faces) {
@@ -537,13 +545,21 @@ function main() {
                 faces[sorted] = quad
             }
         }
+        let kk = 0
         for(let i = 0; i < hexas.length / 8; ++i) {
-            await pushQuad([hexas[8*i + 0], hexas[8*i + 3], hexas[8*i + 2], hexas[8*i + 1]])
-            await pushQuad([hexas[8*i + 4], hexas[8*i + 5], hexas[8*i + 6], hexas[8*i + 7]])
-            await pushQuad([hexas[8*i + 0], hexas[8*i + 1], hexas[8*i + 5], hexas[8*i + 4]])
-            await pushQuad([hexas[8*i + 1], hexas[8*i + 2], hexas[8*i + 6], hexas[8*i + 5]])
-            await pushQuad([hexas[8*i + 3], hexas[8*i + 7], hexas[8*i + 6], hexas[8*i + 2]])
-            await pushQuad([hexas[8*i + 3], hexas[8*i + 0], hexas[8*i + 4], hexas[8*i + 7]])
+            pushQuad([hexas[8*i + 0], hexas[8*i + 3], hexas[8*i + 2], hexas[8*i + 1]])
+            pushQuad([hexas[8*i + 4], hexas[8*i + 5], hexas[8*i + 6], hexas[8*i + 7]])
+            pushQuad([hexas[8*i + 1], hexas[8*i + 2], hexas[8*i + 6], hexas[8*i + 5]])
+            pushQuad([hexas[8*i + 3], hexas[8*i + 0], hexas[8*i + 4], hexas[8*i + 7]])
+            pushQuad([hexas[8*i + 0], hexas[8*i + 1], hexas[8*i + 5], hexas[8*i + 4]])
+            pushQuad([hexas[8*i + 3], hexas[8*i + 7], hexas[8*i + 6], hexas[8*i + 2]])
+            if(kk == 4000) {
+                kk = 0
+                await fakePromise( () => {
+                    document.getElementById('progress').innerHTML = `Determining visible faces ${(100.0 * i / (hexas.length / 8)).toFixed(2)}%`
+                });
+            }
+            ++kk
         }
         quads = Object.values(faces)
     }).then( () => fetch('./minmax-11.bin') ).then( r => r.blob() ) .then( blob => {
@@ -558,7 +574,7 @@ function main() {
         globalMin = [ minmax[0], minmax[1], minmax[2], minmax[3] ]
         globalMax = [ minmax[4], minmax[5], minmax[6], minmax[7] ]
     }).then( () => {
-        document.getElementById('progress').innerHTML = ''
+        document.getElementById('progress').innerHTML = 'Uploading scene to GPU'
     }).then(maingl)
 }
 
