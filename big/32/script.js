@@ -311,7 +311,7 @@ async function setup_scene() {
         gl.enable(gl.RASTERIZER_DISCARD)
         gl.beginTransformFeedback(gl.POINTS)
 
-        gl.drawArrays(gl.POINTS, 0, mcoordslength)
+        gl.drawArrays(gl.POINTS, 0, mcoordslength / 3)
 
         gl.endTransformFeedback()
         gl.disable(gl.RASTERIZER_DISCARD)
