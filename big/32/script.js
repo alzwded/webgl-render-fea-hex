@@ -226,7 +226,7 @@ async function setup_scene() {
 
     let triaBuffer = gl.createBuffer()
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, triaBuffer)
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(prim.trias), gl.STATIC_DRAW)
+    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(prim.trias), gl.STATIC_DRAW)
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null)
 
     let texcoordBuffer = gl.createBuffer()
@@ -389,7 +389,7 @@ async function setup_scene() {
     
             // draw
             gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT)
-            gl.drawElements(gl.TRIANGLES, mtriaslength, gl.UNSIGNED_INT, 0)
+            gl.drawElements(gl.TRIANGLES, mtriaslength, gl.UNSIGNED_SHORT, 0)
 
             //console.log((new Date()).getMilliseconds())
             requestAnimationFrame(state.next)
