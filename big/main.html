@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<canvas id="c" width="800" height="600"></canvas>
+<br/>
+<input type="button" onclick="setValue(0)" value="X">
+<input type="button" onclick="setValue(1)" value="Y">
+<input type="button" onclick="setValue(2)" value="Z">
+<input type="button" onclick="setValue(3)" value="Magnitude">
+<br/>
+<input type="button" onclick="setDeformation(false)" value="Undeformed">
+<input type="button" onclick="setDeformation(true)" value="Show deformations">
+<br/>
+<p>Min: <span id="min" style="color:blue"></span>mm</p>
+<p>Max: <span id="max" style="color:red"></span>mm</p>
+<br/>
+<input type="button" onclick="setColorAxis(0)" value="Semaphore">
+<input type="button" onclick="setColorAxis(1)" value="Rainbow">
+<br/>
+<span id='progress'>Loading...</span>
+<script id="vTransform" type="x-shader/x-vertex">#version 300 es 
+// coordinates
+layout (location = 0) in vec3 aNode;
+// displacement vector, full result
+layout (location = 1) in vec3 aDisplacement;
+// A,B&C are adjacent nodes on the quad to compute the face normal
+layout (location = 2) in vec3 aA;
+layout (location = 3) in vec3 aB;
+layout (location = 4) in vec3 aC;
+// values on a QUAD's corners for selected result
+layout (location = 5) in vec4 aCorners;
+// global min/max for selected result; values will be re-distributed in 0..1
+uniform float uMin;
+uniform float uMax;
+// amount of deformation to apply to vertices
+uniform float uDeformation;
+
+// write quad normal
+out vec4 vNormal;
+// write normalized corner results
+out vec4 vCorners;
+// write vertex position after displacement
+out vec3 vDisplaced;
+void main() {
+  // normalize corner values
+  vec4 corners = aCorners;
+  vCorners = vec4(
+    (corners.x - uMin)/(uMax - uMin),
+    (corners.y - uMin)/(uMax - uMin),
+    (corners.z - uMin)/(uMax - uMin),
+    (corners.w - uMin)/(uMax - uMin));
+  // compute vertex position after displacement
+  vec3 displacement = uDeformation * aDisplacement;
+  vDisplaced = aNode + displacement;
+  // compute normal
+  vec3 ab = aB - aA;
+  vec3 ac = aC - aA;
+  vNormal = normalize(vec4(cross(normalize(ab), normalize(ac)), 0.0));
+  // write something to the pipeline
+  gl_Position = vec4(vDisplaced, 1.0);
+}
+</script>
+<script id="fTransform" type="x-shader/x-fragment">#version 300 es 
+precision mediump float;
+layout(location = 0) out vec4 fragColor;
+void main() {
+  // nop
+  fragColor = vec4(1, 1, 1, 1);
+}
+</script>
+<script id="vRender" type="x-shader/x-vertex">#version 300 es 
+// coordinates
+layout (location = 0) in vec3 aDisplaced;
+// quad normal
+layout (location = 1) in vec4 aNormal;
+// quad corner values
+layout (location = 2) in vec4 aCorners;
+// texture coordinates
+layout (location = 3) in vec2 aTexCoords;
+// model-view matrix
+uniform mat4 uMatrix;
+// movel-view-projection matrix
+uniform mat4 uMVP;
+// light source
+uniform vec3 uLight;
+out vec2 vTexCoord;
+// ambient + diffuse lighting
+out vec4 vOcolor;
+out vec4 vCorners;
+out vec3 vCoord;
+out vec3 vNormal;
+out vec3 vLight;
+void main() {
+  // forward texture coordinates
+  vTexCoord = aTexCoords;
+  // compute view projection
+  gl_Position = uMVP * vec4(aDisplaced, 1.0);
+  // compute view projection for our normal
+  vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * aNormal));
+  // ambient + diffuse lighting
+  vLight = uLight;
+  vec3 lightDirection = normalize(vLight);
+  float nDotL = max(dot(normal, lightDirection), 0.0);
+  const float toneDownLight = 0.9;
+  float diffuse = nDotL * 0.7 * toneDownLight;
+  float ambient = 0.3;
+  float ax = (diffuse + ambient);
+  vOcolor = vec4(ax, ax, ax, 1.0);
+
+  // forward stuff to fragment
+  vCoord =(uMatrix * vec4(aDisplaced, 1.0)).xyz;
+  vNormal = normal;
+  vCorners = aCorners;
+}
+</script>
+<script id="fRender" type="x-shader/x-fragment">#version 300 es 
+precision highp float;
+layout(location = 0) out vec4 fragColor;
+
+in vec2 vTexCoord;
+in vec4 vOcolor;
+in vec4 vCorners;
+
+in vec3 vCoord;
+in vec3 vNormal;
+in vec3 vLight;
+
+uniform int uColorAxisType;
+
+float f(float n, float h, float s, float l) {
+    float k = mod(n + h*360.0/30.0, 12.0);
+    float a = s * min(l, 1.0 - l);
+    //return l - a * max(-1.0, min(min(k - 3.0, 9.0 - k), 1.0));
+    return l - a * max(-1.0, min(min(k - 3.6, 8.4 - k), 1.0));
+}
+
+// cute texture mapping
+//uniform sampler2D uTexture;
+void main() {
+  // cute texture mapping
+  //vec4 tmp = texture(uTexture, vTexCoord);
+  // bilinear interpolation of our 4 corner nodes
+  float p = mix(mix(vCorners.x, vCorners.w, vTexCoord.x), mix(vCorners.y, vCorners.z, vTexCoord.x), vTexCoord.y);
+
+  // optional sexy lighting
+  vec3 coord = normalize(vCoord);
+  vec3 normal = normalize(vNormal);
+  vec3 light = normalize(vLight - vCoord);
+  vec3 V = normalize(vCoord);
+  vec3 H = normalize(light + V);
+  float shiny = max(0.0, dot(H, normal));
+  shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
+
+  vec4 lighting = vOcolor * 0.8 + vec4(shiny, shiny, shiny, 1.0) * 0.2;
+  // end optional sexy lighting
+  //vec4 lighting = vOcolor;
+  
+  if(uColorAxisType == 0) {
+    // map on a red-to-green axis
+    fragColor = vec4(lighting.x * p, lighting.x * (1.0-p), 0.0, 1.0);
+  } else {
+    // map to a rainbox color axis
+    p = 2.0 * p - 1.0;
+    p = (sin(3.14159 / 2.0 * p) + 1.0)  / 2.0;
+    float h = (1.0 - p) * 120.0/180.0;
+    float l = lighting.x * 0.5;
+    float s = 1.0;
+    fragColor = vec4(f(0.0, h, s, l), f(8.0, h, s, l), f(4.0, h, s, l), 1.0);
+  }
+  // debug specular lighting
+  //fragColor = vec4(shiny, shiny, 0, 1);
+}
+</script>
+<script type="text/javascript" src="m4.js"></script>
+<script type="text/javascript" src="script.js"></script>
+</body>
+</html>
