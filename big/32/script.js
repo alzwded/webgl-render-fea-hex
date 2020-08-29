@@ -309,9 +309,9 @@ async function setup_scene() {
         gl.uniform1f(gl.getUniformLocation(state.transformProgram, "uDeformation"), state.deformation ? 23.0 : 0.0)
 
         gl.enable(gl.RASTERIZER_DISCARD)
-        gl.beginTransformFeedback(gl.TRIANGLES)
+        gl.beginTransformFeedback(gl.POINTS)
 
-        gl.drawArrays(gl.TRIANGLES, 0, mcoordslength)
+        gl.drawArrays(gl.POINTS, 0, mcoordslength)
 
         gl.endTransformFeedback()
         gl.disable(gl.RASTERIZER_DISCARD)
