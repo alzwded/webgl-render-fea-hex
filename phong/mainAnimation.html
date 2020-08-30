@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<canvas id="c" width="800" height="600"></canvas>
+<br/>
+<input type="button" onclick="setValue(0)" value="X">
+<input type="button" onclick="setValue(1)" value="Y">
+<input type="button" onclick="setValue(2)" value="Z">
+<input type="button" onclick="setValue(3)" value="Magnitude">
+<br/>
+<p>Min: <span id="min" style="color:blue"></span>mm</p>
+<p>Max: <span id="max" style="color:red"></span>mm</p>
+<br/>
+<input type="button" onclick="setColorAxis(0)" value="Semaphore">
+<input type="button" onclick="setColorAxis(1)" value="Rainbow">
+<script type="x-shader/x-vertex" id="vShader">#version 300 es 
+layout (location = 0) in vec3 aNode;
+layout (location = 1) in vec3 aDisplacement;
+// A,B&C are adjacent nodes on the quad to compute the face normal
+layout (location = 2) in vec3 aA;
+layout (location = 3) in vec3 aB;
+layout (location = 4) in vec3 aC;
+layout (location = 5) in vec2 aTexCoords;
+// results on QUAD corner nodes
+layout (location = 6) in vec4 aCorners;
+// global min/max for selected result, used for scaling to max range
+uniform float uMin;
+uniform float uMax;
+// model-view matrix
+uniform mat4 uMatrix;
+// model-view-projection matrix
+uniform mat4 uMVP;
+// light source
+uniform vec3 uLight;
+// texture coordinates
+out vec2 vTexCoord;
+// ambient+diffuse lighting
+out vec4 vOcolor;
+// normalized colors on each corner node
+out vec4 vCorners;
+
+// eye coordinates
+out vec3 vCoord;
+// quad normal
+out vec3 vNormal;
+// light
+out vec3 vLight;
+
+// animation step; 0..1
+uniform float uAnimationScaling;
+void main() {
+  // forward texture coordinates
+  vTexCoord = aTexCoords;
+  // scale result by animation step
+  vec4 corners = uAnimationScaling * aCorners;
+  // normalize corner results
+  vCorners = vec4(
+    (corners.x - uMin)/(uMax - uMin),
+    (corners.y - uMin)/(uMax - uMin),
+    (corners.z - uMin)/(uMax - uMin),
+    (corners.w - uMin)/(uMax - uMin));
+  // scale result by animation step
+  vec3 displacement = uAnimationScaling * aDisplacement;
+  // write vertex position
+  gl_Position = uMVP * vec4(aNode + displacement, 1.0);
+  // compute quad normal
+  vec3 ab = aB - aA;
+  vec3 ac = aC - aA;
+  vec4 quadNormalPreCamera = vec4(cross(normalize(ab), normalize(ac)), 0.0);
+  vec3 normal = normalize(vec3(transpose(inverse(uMatrix)) * quadNormalPreCamera));
+  // compute diffuse lighting
+  vec3 lightDirection = normalize(uLight);
+  float nDotL = max(dot(normal, lightDirection), 0.0);
+  const float toneDownLight = 0.9;
+  float diffuse = nDotL * 0.7 * toneDownLight;
+  float ambient = 0.3;
+  float ax = (diffuse + ambient);
+  vOcolor = vec4(ax, ax, ax, 1.0);
+
+  // forward vertex position
+  vCoord =(uMatrix * vec4(aNode + displacement, 1.0)).xyz;
+  // forward normal
+  vNormal = normal;
+  // forward light
+  vLight = uLight;
+}
+</script>
+<script type="x-shader/x-fragment" id="fShader">#version 300 es 
+precision mediump float;
+layout(location = 0) out vec4 fragColor;
+
+in vec2 vTexCoord;
+// ambient + diffuse lighting
+in vec4 vOcolor;
+// normalized corner values, for interpolation
+in vec4 vCorners;
+
+// eye coordinate
+in vec3 vCoord;
+// quad normal
+in vec3 vNormal;
+// light
+in vec3 vLight;
+
+uniform int uColorAxisType;
+
+// cute texture mapping
+//uniform sampler2D uTexture;
+
+float f(float n, float h, float s, float l) {
+    float k = mod(n + h*360.0/30.0, 12.0);
+    float a = s * min(l, 1.0 - l);
+    return l - a * max(-1.0, min(min(k - 3.6, 8.4 - k), 1.0));
+}
+
+void main() {
+  // cute texture mapping
+  //vec4 tmp = texture(uTexture, vTexCoord);
+  // bilinear interpolation of our 4 corner nodes
+  float p = mix(mix(vCorners.x, vCorners.w, vTexCoord.x), mix(vCorners.y, vCorners.z, vTexCoord.x), vTexCoord.y);
+
+  // optional sexy lighting
+  vec3 normal = normalize(vNormal);
+  vec3 light = normalize(vLight - vCoord);
+  vec3 R = normalize(reflect(-light, normal));
+  vec3 V = normalize(vCoord);
+  float shiny = max(0.0, dot(R, V));
+  if(dot(light, normal) < 0.0) shiny = 0.0; // lambertian should be > 0 to see reflections
+  shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
+
+  vec4 lighting = vOcolor * 0.8 + vec4(shiny, shiny, shiny, 1.0) * 0.2;
+  // end optional sexy lighting
+  //vec4 lighting = vOcolor;
+  
+  if(uColorAxisType == 0) {
+    // map on a red-to-green axis
+    fragColor = vec4(lighting.x * p, lighting.x * (1.0-p), 0.0, 1.0);
+  } else {
+    // map to a rainbox color axis
+    p = 2.0 * p - 1.0;
+    p = (sin(3.14159 / 2.0 * p) + 1.0)  / 2.0;
+    float h = (1.0 - p) * 120.0/180.0;
+    float l = lighting.x * 0.5;
+    float s = 1.0;
+    fragColor = vec4(f(0.0, h, s, l), f(8.0, h, s, l), f(4.0, h, s, l), 1.0);
+  }
+  // debug specular lighting
+  //fragColor = vec4(shiny, shiny, 0, 1);
+}
+</script>
+<script type="text/javascript" src="m4.js"></script>
+<script type="text/javascript" src="scriptAnimation.js"></script>
+</body>
+</html>
