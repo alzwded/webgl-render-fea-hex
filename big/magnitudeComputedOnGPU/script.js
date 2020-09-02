@@ -136,24 +136,25 @@ function preproc()
         max = globalMax
         let result = state.component
         if(result == 3) {
-            let sqr = (x) => x*x;
+            // disclaimer: it's cheaper to do Math.sqrt(sqr(x) + sqr(y) + sqr(z)) here
+            //             than to do it in a shader later
             corners.push(
-                Math.sqrt(sqr(results[3 * quad[0] + 0]) + sqr(results[3 * quad[0] + 1]) + sqr(results[3 * quad[0] + 2])),
-                Math.sqrt(sqr(results[3 * quad[1] + 0]) + sqr(results[3 * quad[1] + 1]) + sqr(results[3 * quad[1] + 2])),
-                Math.sqrt(sqr(results[3 * quad[2] + 0]) + sqr(results[3 * quad[2] + 1]) + sqr(results[3 * quad[2] + 2])),
-                Math.sqrt(sqr(results[3 * quad[3] + 0]) + sqr(results[3 * quad[3] + 1]) + sqr(results[3 * quad[3] + 2])),
-                Math.sqrt(sqr(results[3 * quad[0] + 0]) + sqr(results[3 * quad[0] + 1]) + sqr(results[3 * quad[0] + 2])),
-                Math.sqrt(sqr(results[3 * quad[1] + 0]) + sqr(results[3 * quad[1] + 1]) + sqr(results[3 * quad[1] + 2])),
-                Math.sqrt(sqr(results[3 * quad[2] + 0]) + sqr(results[3 * quad[2] + 1]) + sqr(results[3 * quad[2] + 2])),
-                Math.sqrt(sqr(results[3 * quad[3] + 0]) + sqr(results[3 * quad[3] + 1]) + sqr(results[3 * quad[3] + 2])),
-                Math.sqrt(sqr(results[3 * quad[0] + 0]) + sqr(results[3 * quad[0] + 1]) + sqr(results[3 * quad[0] + 2])),
-                Math.sqrt(sqr(results[3 * quad[1] + 0]) + sqr(results[3 * quad[1] + 1]) + sqr(results[3 * quad[1] + 2])),
-                Math.sqrt(sqr(results[3 * quad[2] + 0]) + sqr(results[3 * quad[2] + 1]) + sqr(results[3 * quad[2] + 2])),
-                Math.sqrt(sqr(results[3 * quad[3] + 0]) + sqr(results[3 * quad[3] + 1]) + sqr(results[3 * quad[3] + 2])),
-                Math.sqrt(sqr(results[3 * quad[0] + 0]) + sqr(results[3 * quad[0] + 1]) + sqr(results[3 * quad[0] + 2])),
-                Math.sqrt(sqr(results[3 * quad[1] + 0]) + sqr(results[3 * quad[1] + 1]) + sqr(results[3 * quad[1] + 2])),
-                Math.sqrt(sqr(results[3 * quad[2] + 0]) + sqr(results[3 * quad[2] + 1]) + sqr(results[3 * quad[2] + 2])),
-                Math.sqrt(sqr(results[3 * quad[3] + 0]) + sqr(results[3 * quad[3] + 1]) + sqr(results[3 * quad[3] + 2])))
+                results[3 * quad[0] + 0],results[3 * quad[0] + 1],results[3 * quad[0] + 2],
+                results[3 * quad[1] + 0],results[3 * quad[1] + 1],results[3 * quad[1] + 2],
+                results[3 * quad[2] + 0],results[3 * quad[2] + 1],results[3 * quad[2] + 2],
+                results[3 * quad[3] + 0],results[3 * quad[3] + 1],results[3 * quad[3] + 2],
+                results[3 * quad[0] + 0],results[3 * quad[0] + 1],results[3 * quad[0] + 2],
+                results[3 * quad[1] + 0],results[3 * quad[1] + 1],results[3 * quad[1] + 2],
+                results[3 * quad[2] + 0],results[3 * quad[2] + 1],results[3 * quad[2] + 2],
+                results[3 * quad[3] + 0],results[3 * quad[3] + 1],results[3 * quad[3] + 2],
+                results[3 * quad[0] + 0],results[3 * quad[0] + 1],results[3 * quad[0] + 2],
+                results[3 * quad[1] + 0],results[3 * quad[1] + 1],results[3 * quad[1] + 2],
+                results[3 * quad[2] + 0],results[3 * quad[2] + 1],results[3 * quad[2] + 2],
+                results[3 * quad[3] + 0],results[3 * quad[3] + 1],results[3 * quad[3] + 2],
+                results[3 * quad[0] + 0],results[3 * quad[0] + 1],results[3 * quad[0] + 2],
+                results[3 * quad[1] + 0],results[3 * quad[1] + 1],results[3 * quad[1] + 2],
+                results[3 * quad[2] + 0],results[3 * quad[2] + 1],results[3 * quad[2] + 2],
+                results[3 * quad[3] + 0],results[3 * quad[3] + 1],results[3 * quad[3] + 2])
         } else {
             corners.push(
                 results[3 * quad[0] + result],
@@ -190,6 +191,55 @@ function preproc()
         max: max,
         texcoords: texcoords,
         corners: corners
+    }
+}
+
+function computeCornerData(result, corners, buffer)
+{
+    let gl = state.gl
+    if(result == 3) {
+        // disclaimer: this is actually slower than doing an old
+        //   let sqr = x => x*x
+        //   corners = corners.map( e => Math.sqrt(sqr(e.x) + sqr(e.y) + sqr(e.z) )
+        // which assumes corners are pushed as an array of vec3 and not as a flat array
+        // Not much, it seems it's 100ms over 7s, or about ~2% relative performance difference with the CPU
+        // the problem is that it's 100ms, which is a noticeable amount of frames
+        // If you divvy that up over 7s, it's pretty much exactly one MORE frame dropped
+        gl.useProgram(state.magnitudeProgram)
+
+        let tempCorners = gl.createBuffer()
+        gl.bindBuffer(gl.ARRAY_BUFFER, tempCorners)
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(corners), gl.STATIC_DRAW)
+
+        let aA = 0
+        let oneVec3 = 3 * 4
+        let stride = 4/*ABCD*/ * 3/*vec3*/ * 4 /*FLOAT*/
+        gl.vertexAttribPointer(aA, 3, gl.FLOAT, false, stride, 0 * oneVec3)
+        gl.enableVertexAttribArray(aA)
+        let aB = 1
+        gl.vertexAttribPointer(aB, 3, gl.FLOAT, false, stride, 1 * oneVec3)
+        gl.enableVertexAttribArray(aB)
+        let aC = 2
+        gl.vertexAttribPointer(aC, 3, gl.FLOAT, false, stride, 2 * oneVec3)
+        gl.enableVertexAttribArray(aC)
+        let aD = 3
+        gl.vertexAttribPointer(aD, 3, gl.FLOAT, false, stride, 3 * oneVec3)
+        gl.enableVertexAttribArray(aD)
+
+        gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, buffer)
+        gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, 4 * 4 * corners.length, gl.STATIC_COPY)
+        gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null)
+        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, buffer)
+
+        gl.enable(gl.RASTERIZER_DISCARD)
+        gl.beginTransformFeedback(gl.POINTS)
+        gl.drawArrays(gl.POINTS, 0, corners.length / 3 / 4)
+        gl.endTransformFeedback(gl.POINTS)
+        gl.disable(gl.RASTERIZER_DISCARD)
+
+        gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null)
+    } else {
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(corners), gl.STATIC_DRAW);
     }
 }
 
@@ -236,7 +286,7 @@ async function setup_scene() {
 
     let cornersBuffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, cornersBuffer)
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.corners), gl.STATIC_DRAW);
+    computeCornerData(state.component, prim.corners, cornersBuffer)
     gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
     // ===== scene populated =====
@@ -461,6 +511,21 @@ function maingl() {
     gl.linkProgram(program)
     state.renderProgram = program
 
+    let vMagnitude = gl.createShader(gl.VERTEX_SHADER)
+    gl.shaderSource(vMagnitude, document.getElementById('vMagnitude').textContent)
+    gl.compileShader(vMagnitude)
+    if(!gl.getShaderParameter(vMagnitude, gl.COMPILE_STATUS)) {
+        document.writeln('failed to compile fTransform: ' + gl.getShaderInfoLog(vMagnitude))
+    }
+    state.vMagnitude = vMagnitude
+    let magnitudeProgram = gl.createProgram()
+    gl.attachShader(magnitudeProgram, vMagnitude)
+    gl.attachShader(magnitudeProgram, fTransform)
+    const magnitudeFeedbackVarying = [ "vCorners" ]
+    gl.transformFeedbackVaryings(magnitudeProgram, magnitudeFeedbackVarying, gl.INTERLEAVED_ATTRIBS)
+    gl.linkProgram(magnitudeProgram)
+    state.magnitudeProgram = magnitudeProgram
+
     // global stuff
     gl.clearColor(1.0, 0.0, 1.0, 0.0)
     gl.enable(gl.DEPTH_TEST)
@@ -492,7 +557,7 @@ function main() {
         }
     };
     document.getElementById('progress').innerHTML = 'Loading node coordinates'
-    fetch('./nodes.bin').then( r => r.blob()).then( blob => {
+    fetch('../nodes.bin').then( r => r.blob()).then( blob => {
         const reader = new FileReader();
         return new Promise((resolve) => {
             reader.addEventListener('loadend', () => {
@@ -505,7 +570,7 @@ function main() {
         return Promise.resolve()
     }).then( () => {
         document.getElementById('progress').innerHTML = 'Loading nodal displacements'
-        return fetch('./mode-11.bin')
+        return fetch('../mode-11.bin')
     }).then( r => r.blob() ).then( blob => {
         const reader = new FileReader();
         return new Promise((resolve) => {
@@ -519,7 +584,7 @@ function main() {
         results = resultArray
         document.getElementById('progress').innerHTML = 'Loading connectivity'
         return Promise.resolve()
-    }).then( () => fetch('./connect.bin') ).then( r => r.blob() ).then( blob => {
+    }).then( () => fetch('../connect.bin') ).then( r => r.blob() ).then( blob => {
         const reader = new FileReader();
         return new Promise((resolve) => {
             reader.addEventListener('loadend', () => {
@@ -562,7 +627,7 @@ function main() {
             ++kk
         }
         quads = Object.values(faces)
-    }).then( () => fetch('./minmax-11.bin') ).then( r => r.blob() ) .then( blob => {
+    }).then( () => fetch('../minmax-11.bin') ).then( r => r.blob() ) .then( blob => {
         const reader = new FileReader();
         return new Promise((resolve) => {
             reader.addEventListener('loadend', () => {

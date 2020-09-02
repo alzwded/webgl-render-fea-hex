@@ -20,6 +20,22 @@
 <input type="button" onclick="setColorAxis(1)" value="Rainbow">
 <br/>
 <span id='progress'>Loading...</span>
+<script id="vMagnitude" type="x-shader/x-vertex">#version 300 es 
+// displacements
+layout (location = 0) in vec3 aA;
+layout (location = 1) in vec3 aB;
+layout (location = 2) in vec3 aC;
+layout (location = 3) in vec3 aD;
+out vec4 vCorners;
+void main() {
+  vCorners = vec4(
+    length(aA),
+    length(aB),
+    length(aC),
+    length(aD));
+  gl_Position = vec4(0, 0, 0, 1);
+}
+</script>
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
 // coordinates
 layout (location = 0) in vec3 aNode;
