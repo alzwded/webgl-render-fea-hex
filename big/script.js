@@ -239,7 +239,7 @@ async function setup_scene() {
     let gl = state.gl
 
     // ===== populate buffers with scene state =====
-    let prim = await preproc(gl);
+    let prim = await preproc();
 
     // initialize our buffers
     let coordsBuffer = gl.createBuffer()
@@ -278,7 +278,6 @@ async function setup_scene() {
     let cornersBuffer = gl.createBuffer()
     gl.bindBuffer(gl.ARRAY_BUFFER, cornersBuffer)
     computeCornerData(state.component, prim.corners, cornersBuffer)
-    //gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(prim.corners), gl.STATIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, null)
 
     // ===== scene populated =====
