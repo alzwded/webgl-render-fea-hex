@@ -136,6 +136,8 @@ function preproc()
         max = globalMax
         let result = state.component
         if(result == 3) {
+            // disclaimer: it's cheaper to do Math.sqrt(sqr(x) + sqr(y) + sqr(z)) here
+            //             than to do it in a shader later
             corners.push(
                 results[3 * quad[0] + 0],results[3 * quad[0] + 1],results[3 * quad[0] + 2],
                 results[3 * quad[1] + 0],results[3 * quad[1] + 1],results[3 * quad[1] + 2],
@@ -196,6 +198,13 @@ function computeCornerData(result, corners, buffer)
 {
     let gl = state.gl
     if(result == 3) {
+        // disclaimer: this is actually slower than doing an old
+        //   let sqr = x => x*x
+        //   corners = corners.map( e => Math.sqrt(sqr(e.x) + sqr(e.y) + sqr(e.z) )
+        // which assumes corners are pushed as an array of vec3 and not as a flat array
+        // Not much, it seems it's 100ms over 7s, or about ~2% relative performance difference with the CPU
+        // the problem is that it's 100ms, which is a noticeable amount of frames
+        // If you divvy that up over 7s, it's pretty much exactly one MORE frame dropped
         gl.useProgram(state.magnitudeProgram)
 
         let tempCorners = gl.createBuffer()
