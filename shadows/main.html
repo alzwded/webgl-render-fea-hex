@@ -51,7 +51,7 @@ void main() {
   vec3 pos = aCoords;
   vec3 normal = (transpose(inverse(uMV)) * vec4(aNormal, 0.0)).xyz;
   vec3 normalOffset = length(uMVP * vec4(aCoords, 1.0)) / 100.0 / 2.0 * aNormal * dot(normal, vec3(0, 0, -1));
-  normalOffset = length(uMV * vec4(aCoords, 1.0))/100.0 * aNormal * abs(dot(normal, vec3(0, 0, -1)));
+  normalOffset = length(uMV * vec4(aCoords, 1.0))/100.0 * aNormal * max(dot(normal, vec3(0, 0, -1)), 0.0);
   vCoord = uMVP * vec4(aCoords - normalOffset, 1.0);
   gl_Position = uMVP * vec4(aCoords - normalOffset, 1.0);
 }
