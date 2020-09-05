@@ -45,13 +45,13 @@ layout (location = 1) in vec3 aNormal;
 // movel-view-projection matrix
 uniform mat4 uMVP;
 uniform mat4 uMV;
+uniform float uFarPlane;
 
 out vec4 vCoord;
 void main() {
   vec3 pos = aCoords;
   vec3 normal = (transpose(inverse(uMV)) * vec4(aNormal, 0.0)).xyz;
-  vec3 normalOffset = length(uMVP * vec4(aCoords, 1.0)) / 100.0 / 2.0 * aNormal * dot(normal, vec3(0, 0, -1));
-  normalOffset = length(uMV * vec4(aCoords, 1.0))/100.0 * aNormal * max(dot(normal, vec3(0, 0, -1)), 0.0);
+  vec3 normalOffset = length(uMV * vec4(aCoords, 1.0))/uFarPlane * aNormal * max(dot(normal, vec3(0, 0, -1)), 0.0);
   vCoord = uMVP * vec4(aCoords - normalOffset, 1.0);
   gl_Position = uMVP * vec4(aCoords - normalOffset, 1.0);
 }
@@ -136,7 +136,7 @@ in vec4 vLight;
 
 // light map
 uniform sampler2D uLightMap;
-uniform vec2 uViewportWidth;
+uniform float uFarPlane;
 
 void main() {
   vec3 normal = normalize(vNormal);
@@ -151,7 +151,7 @@ void main() {
   const float c256_2 = c256 * c256;
   float lightDepth = (c256_2 * lightTextureColor.r + c256 * lightTextureColor.g) / c256_2;
   //lightDepth = lightTextureColor.r;
-  float myDepth = vLightCoord.z / 100.0; // uFarPlane
+  float myDepth = vLightCoord.z / uFarPlane;
 
   const float magic = 1.0/65535.0;
   float bias = max(magic * (1.0 - dot(light, normal)), magic);

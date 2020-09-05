@@ -323,6 +323,9 @@ async function setup_scene() {
 
 
         let loop = function _loop() {
+
+            const farPlane = 100.0
+
             gl.enable(gl.DEPTH_TEST)
             if(state.renderDepth) {
                 canvas.width = 1024
@@ -356,7 +359,7 @@ async function setup_scene() {
             lightPos = m4.transformVector(m4.yRotate(m4.identity(), state.animframe * 0.3/18), lightPos)
             lightPos = m4.transformVector(m4.inverse(rotations), [0, 0, -10 * 1.41, 1])
             // projection matrix
-            let lightP = m4.perspective(3.14159/1.3, 1, 0.1, 100.0)
+            let lightP = m4.perspective(3.14159/1.3, 1, 0.1, farPlane)
             // apply projection matrix to get projection-model-view matrix
             let lightMVP = m4.multiply(lightP, lightMV)
 
@@ -373,7 +376,7 @@ async function setup_scene() {
 
             gl.uniformMatrix4fv(gl.getUniformLocation(state.lightProgram, "uMVP"), false, lightMVP);
             gl.uniformMatrix4fv(gl.getUniformLocation(state.lightProgram, "uMV"), false, lightMV);
-            gl.uniform1f(gl.getUniformLocation(state.lightProgram, "uFarPlane"), 100.0);
+            gl.uniform1f(gl.getUniformLocation(state.lightProgram, "uFarPlane"), farPlane);
 
             if(!state.renderDepth) {
                 // create texture
@@ -446,6 +449,7 @@ async function setup_scene() {
             gl.uniform3fv(gl.getUniformLocation(state.renderProgram, "uLight"), [lightPos[0], lightPos[1], lightPos[2]])
             gl.uniformMatrix4fv(gl.getUniformLocation(state.renderProgram, "uMVPLight"), false, lightMVP)
             gl.uniform1i(gl.getUniformLocation(state.renderProgram, "uLightMap"), 0);
+            gl.uniform1f(gl.getUniformLocation(state.renderProgram, "uFarPlane"), farPlane);
     
             // draw
             gl.enable(gl.DEPTH_TEST)
