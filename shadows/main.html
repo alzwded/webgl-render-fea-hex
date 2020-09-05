@@ -162,8 +162,8 @@ void main() {
   shiny = (diffuse > 0.0 ? shiny : 0.0);
 
   vec4 lighting = vec4(0.2, 0.2, 0.2, 1.0)  + (inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(shiny, shiny, shiny, 1.0) * 0.5+ diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0));
-  lighting = vec4(0.2, 0.2, 0.2, 1.0)  + (inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0)); // only on one side for some reason
-  lighting = inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 1.0, 1.0, 1.0); // this works
+  //lighting = vec4(0.2, 0.2, 0.2, 1.0)  + (inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0)); // only on one side for some reason
+  //lighting = inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 1.0, 1.0, 1.0); // this works
 
   fragColor = vColor * lighting;
   //fragColor = vec4(shiny, shiny, shiny, 1.0);

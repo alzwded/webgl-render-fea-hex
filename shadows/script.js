@@ -302,7 +302,9 @@ async function setup_scene() {
             let translations = m4.identity()
             translations = m4.translate(translations, 0, 0, -10 * 1.41)
             let lightMV = m4.multiply(translations, rotations)
-            let lightPos = m4.transformVector(rotations, [0, 0, -10 * 1.41, 1])
+            let lightPos = [-10 * 1.41, 0, 0, 1]
+            lightPos = m4.transformVector(m4.zRotate(m4.identity(), 45 / 360 * 2 * 3.14159), lightPos)
+            lightPos = m4.transformVector(m4.yRotate(m4.identity(), state.animframe * 0.3/18), lightPos)
             // projection matrix
             let lightP = m4.perspective(3.14159/1.3, 1, 0.1, 100.0)
             // apply projection matrix to get projection-model-view matrix
