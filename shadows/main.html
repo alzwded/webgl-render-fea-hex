@@ -72,7 +72,7 @@ void main() {
   float val = vCoord.z / uFarPlane;
   float valInBigBase = c256_2 * val;
   fragColor = vec4(mod(floor(valInBigBase / 256.0), 256.0) / 256.0, mod(valInBigBase, 256.0) / 256.0, 0.0, 1.0);
-  fragColor = vec4(val, 0, 0, 1.0);
+  //fragColor = vec4(val, 0, 0, 1.0);
 }
 </script>
 <script type="x-shader/x-vertex" id="vRender">#version 300 es 
@@ -147,7 +147,7 @@ void main() {
   const float c256 = 256.0;
   const float c256_2 = c256 * c256;
   float lightDepth = (c256_2 * lightTextureColor.r + c256 * lightTextureColor.g) / c256_2;
-  lightDepth = lightTextureColor.r;
+  //lightDepth = lightTextureColor.r;
   float myDepth = vLightCoord.z / 100.0; // uFarPlane
   bool inShadow = myDepth > lightDepth;
 
