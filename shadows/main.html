@@ -2,11 +2,16 @@
 <html>
 <head>
 </head>
-<body>
+<body style="background-color:#DEE">
 <canvas id="c" width="800" height="600"></canvas>
 <br/>
 <input type="button" onclick="setRenderDepthDebug(true)" value="Show Shadow Map">
 <input type="button" onclick="setRenderDepthDebug(false)" value="Show Rendered Scene">
+<br/>
+<input type="button" onclick="setCamera('top')" value="Top">
+<input type="button" onclick="setCamera('30')" value="Front 30°">
+<input type="button" onclick="setCamera('iso')" value="Isometric">
+<input type="button" onclick="setCamera('side30')" value="Side 30°">
 <br/>
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
 // coordinates
@@ -199,11 +204,13 @@ uniform sampler2D uSceneTexture;
 
 void main() {
   //float blindingLight = max(distance(vLight.xy/vLight.w, vTexCoord.xy * 2.0 - 1.0) / sqrt(2.0), 1.0/65535.0);
-  float blindingLight = distance(vec2(vLight.x, -vLight.y)/vLight.w, vTexCoord.xy * 2.0 - 1.0) / length(vec2(2, 2));
+  float blindingLight = distance(vec2(-vLight.x, -vLight.y)/vLight.w, vTexCoord.xy * 2.0 - 1.0) / length(vec2(2, 2));
   blindingLight = 1.0 - blindingLight;
-  blindingLight = pow(blindingLight, 111.0);
-  fragColor = min(texture(uSceneTexture, vTexCoord) + vec4(1.0, 1.0, 0.0, blindingLight), vec4(1.0, 1.0, 1.0, 1.0));
-  fragColor = texture(uSceneTexture, vTexCoord) + blindingLight;
+  blindingLight = pow(blindingLight, 50.0);
+  vec4 sampledColor = texture(uSceneTexture, vTexCoord);
+  vec4 lightColor = vec4(1.0, 1.0, 0.6, 1.0) * blindingLight;
+  fragColor = min(sampledColor + lightColor, vec4(1.0, 1.0, 1.0, 1.0));
+  //fragColor = texture(uSceneTexture, vTexCoord) + blindingLight;
   //fragColor = vec4(vLight.xy / vLight.w / 2.0 + 0.5, 0.0, 1.0);
   //fragColor = vec4(blindingLight, 0.0, 0.0, 1.0);
 }

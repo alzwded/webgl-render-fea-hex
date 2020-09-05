@@ -10,6 +10,11 @@ var state = {
 
 }
 
+const camera = {
+    matrix: undefined,
+    viewMatrix: undefined,
+    mvpMatrix: undefined
+}
 // nodes
 var nodes = [
     // base
@@ -310,6 +315,7 @@ async function setup_scene() {
 
 
         let loop = function _loop() {
+            gl.enable(gl.DEPTH_TEST)
             if(state.renderDepth) {
                 canvas.width = 1024
                 canvas.height = 1024
@@ -337,9 +343,10 @@ async function setup_scene() {
             translations = m4.translate(translations, 0, 0, -10 * 1.41)
             let lightMV = m4.multiply(translations, rotations)
             let lightPos = [0, 0, -10 * 1.41, 1]
+            lightPos = m4.transformVector(m4.xRotate(m4.identity(), 45 / 360 * 2 * 3.14159), lightPos)
             lightPos = m4.transformVector(m4.yRotate(m4.identity(), 3.14159 / 2), lightPos)
-            lightPos = m4.transformVector(m4.zRotate(m4.identity(), 45 / 360 * 2 * 3.14159), lightPos)
             lightPos = m4.transformVector(m4.yRotate(m4.identity(), state.animframe * 0.3/18), lightPos)
+            lightPos = m4.transformVector(m4.inverse(rotations), [0, 0, -10 * 1.41, 1])
             // projection matrix
             let lightP = m4.perspective(3.14159/1.3, 1, 0.1, 100.0)
             // apply projection matrix to get projection-model-view matrix
@@ -417,30 +424,18 @@ async function setup_scene() {
             gl.vertexAttribPointer(aColor, 4, gl.FLOAT, false, 0, 0)
             gl.enableVertexAttribArray(aColor)
     
-            // model matrix
-            let matrix = m4.identity()
-            matrix = m4.xRotate(matrix, 90 / 360 * 2 * 3.14159)
-            matrix = m4.scale(matrix, 1.0, 1.0, 1.0)
-            // out light is actually tethered to the camera (overhead light, of sorts)
-            const dist = 30
-            let viewMatrix = m4.translate(m4.identity(), 0, 0, -dist)
-            // apply view matrix to get model-view matrix
-            matrix = m4.multiply(viewMatrix, matrix)
-            // projection matrix
-            let mvpMatrix = m4.perspective(3.14159/3, aspect, 0.1, dist * 4)
-            // apply projection matrix to get projection-model-view matrix
-            mvpMatrix = m4.multiply(mvpMatrix, matrix)
             
     
             // Set the matrix.
-            gl.uniformMatrix4fv(gl.getUniformLocation(state.renderProgram, "uMatrix"), false, matrix)
-            gl.uniformMatrix4fv(gl.getUniformLocation(state.renderProgram, "uMVP"), false, mvpMatrix)
+            gl.uniformMatrix4fv(gl.getUniformLocation(state.renderProgram, "uMatrix"), false, camera.matrix)
+            gl.uniformMatrix4fv(gl.getUniformLocation(state.renderProgram, "uMVP"), false, camera.mvpMatrix)
             gl.uniform3fv(gl.getUniformLocation(state.renderProgram, "uLight"), [lightPos[0], lightPos[1], lightPos[2]])
             gl.uniformMatrix4fv(gl.getUniformLocation(state.renderProgram, "uMVPLight"), false, lightMVP)
             gl.uniform1i(gl.getUniformLocation(state.renderProgram, "uLightMap"), 0);
     
             // draw
-            gl.clearColor(1.0, 0.0, 1.0, 1.0)
+            gl.enable(gl.DEPTH_TEST)
+            gl.clearColor(0.0, 0.0, 0.0, 0.0)
             gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT)
             gl.drawElements(gl.TRIANGLES, mtriaslength, gl.UNSIGNED_INT, 0)
 
@@ -461,7 +456,7 @@ async function setup_scene() {
 
             gl.uniform1i(gl.getUniformLocation(state.finalProgram, "uSceneTexture"), 0);
             gl.uniform3f(gl.getUniformLocation(state.finalProgram, "uLight"), lightPos[0], lightPos[1], lightPos[2]);
-            gl.uniformMatrix4fv(gl.getUniformLocation(state.finalProgram, "uMVP"), false, mvpMatrix)
+            gl.uniformMatrix4fv(gl.getUniformLocation(state.finalProgram, "uMVP"), false, camera.mvpMatrix)
 
             gl.bindBuffer(gl.ARRAY_BUFFER, singleTriangleBuffer)
             gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 5 * 4, 0)
@@ -487,11 +482,85 @@ async function setup_scene() {
 }
 
 
+function setCamera(mode) {
+    const canvas = document.getElementById('c')
+    let aspect = canvas.width / canvas.height;
+/*
+    // model matrix
+    let matrix = m4.identity()
+    switch(mode) {
+    case 'top': 
+        matrix = m4.xRotate(matrix, 90 / 360 * 2 * 3.14159)
+        break;
+    case 'side30': 
+        matrix = m4.yRotate(matrix, 90 / 360 * 2 * 3.14159)
+        matrix = m4.xRotate(m4.identity(), 30 / 360 * 2 * 3.14159)
+        break;
+    case '30':
+        matrix = m4.xRotate(matrix, 30 / 360 * 2 * 3.14159)
+        break;
+    case 'iso':
+        matrix = m4.xRotate(matrix, 45 / 360 * 2 * 3.14159)
+        matrix = m4.yRotate(matrix, 45 / 360 * 2 * 3.14159)
+        break;
+    }
+    matrix = m4.scale(matrix, 1.0, 1.0, 1.0)
+    // out light is actually tethered to the camera (overhead light, of sorts)
+    const dist = 30
+    let viewMatrix = m4.translate(m4.identity(), 0, 0, -dist)
+    // apply view matrix to get model-view matrix
+    matrix = m4.multiply(viewMatrix, matrix)
+    */
+
+    const dist = 30
+    let matrix = m4.identity()
+    let pos = [0, 0, -dist]
+
+    switch(mode) {
+    case 'top': 
+        matrix = m4.xRotate(matrix, 90 / 360 * 2 * 3.14159)
+        pos = m4.transformPoint(matrix, pos)
+        matrix = m4.lookAt(pos, [0, 0, 0], [0, 0, -1])
+        break;
+    case 'side30': 
+        matrix = m4.yRotate(m4.identity(), -90 / 360 * 2 * 3.14159)
+        pos = m4.transformPoint(matrix, pos)
+        matrix = m4.zRotate(m4.identity(), 30 / 360 * 2 * 3.14159)
+        pos = m4.transformPoint(matrix, pos)
+        matrix = m4.lookAt(pos, [0, 0, 0], [0, 1, 0])
+        break;
+    case '30':
+        matrix = m4.xRotate(matrix, 30 / 360 * 2 * 3.14159)
+        pos = m4.transformPoint(matrix, pos)
+        matrix = m4.lookAt(pos, [0, 0, 0], [0, 1, 0])
+        break;
+    case 'iso':
+        matrix = m4.xRotate(m4.identity(), 45 / 360 * 2 * 3.14159)
+        pos = m4.transformPoint(matrix, pos)
+        matrix = m4.yRotate(m4.identity(), 45 / 360 * 2 * 3.14159)
+        pos = m4.transformPoint(matrix, pos)
+        matrix = m4.lookAt(pos, [0, 0, 0], [0, 1, 0])
+        break;
+    }
+    matrix = m4.inverse(matrix)
+
+    // projection matrix
+    let mvpMatrix = m4.perspective(3.14159/3, aspect, 0.1, dist * 4)
+    // apply projection matrix to get projection-model-view matrix
+    mvpMatrix = m4.multiply(mvpMatrix, matrix)
+
+    camera.matrix = matrix;
+    camera.viewMatrix = matrix;
+    camera.mvpMatrix = mvpMatrix;
+}
+
 
 function main() {
     // initialize webgl
     const canvas = document.getElementById('c')
     const gl = canvas.getContext('webgl2')
+
+    setCamera('30')
 
     if(gl === null) {
         document.writeln('failed to get GL context')
