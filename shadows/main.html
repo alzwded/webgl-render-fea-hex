@@ -133,6 +133,10 @@ uniform sampler2D uLightMap;
 uniform vec2 uViewportWidth;
 
 void main() {
+  vec3 normal = normalize(vNormal);
+  vec3 light = -normalize(vLight - vCoord).xyz;
+
+
   // sample light depth
   vec3 lightTextureCoords = vLightCoord.xyz / vLightCoord.w;
   vec4 lightTextureColor = texture(uLightMap, lightTextureCoords.xy);
@@ -143,10 +147,7 @@ void main() {
   //lightDepth = lightTextureColor.r;
   float myDepth = vLightCoord.z / 100.0; // uFarPlane
 
-  vec3 normal = normalize(vNormal);
-  vec3 light = -normalize(vLight - vCoord).xyz;
-
-  const float magic = 0.1/65535.0;
+  const float magic = 1.0/65535.0;
   float bias = max(magic * (1.0 - dot(light, normal)), magic);
   bool inShadow = myDepth - bias > lightDepth;
 
