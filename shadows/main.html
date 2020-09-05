@@ -27,12 +27,12 @@ layout (location = 1) in vec3 aB;
 layout (location = 2) in vec3 aC;
 
 // write quad normal
-out vec4 vNormal;
+out vec3 vNormal;
 void main() {
   // compute normal
   vec3 ab = aB - aA;
   vec3 ac = aC - aA;
-  vNormal = normalize(vec4(cross(normalize(ab), normalize(ac)), 0.0));
+  vNormal = normalize(cross(normalize(ac), normalize(ab)));
   // write something to the pipeline
   gl_Position = vec4(aA, 1.0);
 }
@@ -77,7 +77,7 @@ void main() {
 </script>
 <script type="x-shader/x-vertex" id="vRender">#version 300 es 
 layout (location = 0) in vec3 aCoord;
-layout (location = 1) in vec4 aNormal;
+layout (location = 1) in vec3 aNormal;
 layout (location = 2) in vec2 aTexCoords;
 layout (location = 3) in vec4 aColor;
 // model-view matrix
@@ -92,14 +92,12 @@ uniform vec3 uLight;
 // texture coordinates
 out vec2 vTexCoord;
 out vec4 vColor;
-// diffuse lighting
-out float vLambertian;
 // eye coordinates
 out vec4 vCoord;
 // light coordinates
 out vec4 vLightCoord;
 // quad normal
-out vec4 vNormal;
+out vec3 vNormal;
 // light
 out vec4 vLight;
 
@@ -116,12 +114,9 @@ void main() {
   // light position
   vLight = uMatrix * vec4(uLight, 1.0);
   // forward normal
-  vNormal = aNormal;
+  vNormal = normalize(transpose(inverse(uMatrix)) * vec4(aNormal, 0.0)).xyz;
   // forward color
   vColor = aColor;
-  // compute diffuse lighting
-  vec4 lightDirection = vec4(normalize(vLight - vCoord).xyz, 0.0);
-  float vLambertian = max(dot(vNormal, lightDirection), 0.0);
 }
 </script>
 <script type="x-shader/x-fragment" id="fRender">#version 300 es 
@@ -131,14 +126,12 @@ layout(location = 0) out vec4 fragColor;
 // texture coordinates
 in vec2 vTexCoord;
 in vec4 vColor;
-// diffuse lighting
-in float vLambertian;
 // eye coordinates
 in vec4 vCoord;
 // light coordinates
 in vec4 vLightCoord;
 // quad normal
-in vec4 vNormal;
+in vec3 vNormal;
 // light
 in vec4 vLight;
 
@@ -158,19 +151,23 @@ void main() {
   float myDepth = vLightCoord.z / 100.0; // uFarPlane
   bool inShadow = myDepth > lightDepth;
 
-  // optional sexy lighting
-  vec3 normal = normalize(vNormal).xyz;
+
+  vec3 normal = normalize(vNormal);
   vec3 light = normalize(vLight - vCoord).xyz;
+  float diffuse = max(0.0, dot(light, normal));
   vec3 V = normalize(vCoord.xyz);
   vec3 H = normalize(light + V);
   float shiny = max(0.0, dot(H, normal));
   shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
+  shiny = (diffuse > 0.0 ? shiny : 0.0);
 
-  vec4 lighting = vec4(0.2, 0.2, 0.2, 1.0) + vLambertian * 0.3 * vec4(1.0, 1.0, 1.0, 1.0) + (inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(shiny, shiny, shiny, 1.0) * 0.5);
-  lighting = vec4(0.2, 0.2, 0.2, 1.0) + vLambertian * 0.3 * vec4(1.0, 1.0, 1.0, 1.0);
-  lighting = vec4(vLambertian, 0, 0, 1);
+  vec4 lighting = vec4(0.2, 0.2, 0.2, 1.0)  + (inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(shiny, shiny, shiny, 1.0) * 0.5+ diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0));
+  //lighting = vec4(0.2, 0.2, 0.2, 1.0) + diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0);
+  lighting = inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 1.0, 1.0, 1.0); // this works
 
   fragColor = vColor * lighting;
+  //fragColor = vec4(shiny, shiny, shiny, 1.0);
+  //fragColor = vec4(normal, 1.0);
   //fragColor = (lightTextureColor.a > 0.0) ? lightTextureColor : vec4(1.0, 1.0, 1.0, 1.0);
   //fragColor = vec4(myDepth, 0.0, 0.0, 1.0);
   //fragColor = vec4(lightTextureColor.xy, 0.0, 1.0);

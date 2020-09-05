@@ -42,7 +42,6 @@ var nodes = [
 var quads = [
     // base
     [0, 1, 2, 3],
-    [0, 3, 2, 1],
     // cube1
     [4+3, 4+2, 4+1, 4+0],
     [4+4, 4+5, 4+6, 4+7],
@@ -61,8 +60,7 @@ var quads = [
 
 var colors = [
     // base
-    [0.2, 0.2, 0.2, 1.0],
-    [0.2, 0.2, 0.2, 1.0],
+    [0.2, 0.6, 0.2, 1.0],
     // cube1
     [0.7, 0.7, 0.2, 1.0],
     [0.7, 0.7, 0.2, 1.0],
@@ -232,7 +230,7 @@ async function setup_scene() {
     // ===== transform buffers =====
     let tNormalsBuffer = gl.createBuffer()
     gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, tNormalsBuffer)
-    gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, 4 * prim.coords.length * 4, gl.STATIC_COPY)
+    gl.bufferData(gl.TRANSFORM_FEEDBACK_BUFFER, 3 * prim.coords.length * 4, gl.STATIC_COPY)
     gl.bindBuffer(gl.TRANSFORM_FEEDBACK_BUFFER, null)
 
     let mcoordslength = prim.coords.length
@@ -276,7 +274,7 @@ async function setup_scene() {
 
 
         let loop = function _loop() {
-            let renderDepth = true
+            let renderDepth = false
 
             if(renderDepth) {
                 canvas.width = 1024
@@ -303,9 +301,8 @@ async function setup_scene() {
             rotations = m4.yRotate(rotations, state.animframe * 0.3/18)
             let translations = m4.identity()
             translations = m4.translate(translations, 0, 0, -10 * 1.41)
-            let lightMV = m4.multiply(rotations, translations)
-            //let lightPos = m4.transformVector(lightMV, [0, 0, 0, 1])
-            let lightPos = m4.transformPoint(lightMV, [0, 0, -1])
+            let lightMV = m4.multiply(translations, rotations)
+            let lightPos = m4.transformVector(rotations, [0, 0, -10 * 1.41, 1])
             // projection matrix
             let lightP = m4.perspective(3.14159/1.3, 1, 0.1, 100.0)
             // apply projection matrix to get projection-model-view matrix
@@ -376,7 +373,7 @@ async function setup_scene() {
     
             gl.bindBuffer(gl.ARRAY_BUFFER, tNormalsBuffer)
             let aNormal = 1
-            gl.vertexAttribPointer(aNormal, 4, gl.FLOAT, false, 0, 0)
+            gl.vertexAttribPointer(aNormal, 3, gl.FLOAT, false, 0, 0)
             gl.enableVertexAttribArray(aNormal)
 
             gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer)
@@ -519,7 +516,7 @@ function main() {
     setup_scene()
 
     // bump animation state
-    setInterval(() => state.animframe = state.animframe + 0, 1000.0/60.0)
+    setInterval(() => state.animframe = state.animframe + 1, 1000.0/60.0)
 }
 
 function setValue(n) {
