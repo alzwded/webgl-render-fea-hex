@@ -10,3 +10,5 @@ alzwded's WebGL Experiments
 + [One Million Elements... (but with magnitudes computed on GPU!)](./big/magnitudeComputedOnGPU/main.html)
 
 [README](./README.md)
+
+And here's something that's not scientific visualization: [shadow map~~s~~ (okay, just one)](./shadows/pcf/main.html)

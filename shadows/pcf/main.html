@@ -128,6 +128,7 @@ void main() {
 </script>
 <script type="x-shader/x-fragment" id="fRender">#version 300 es 
 precision highp float;
+#define USE_PCF
 layout(location = 0) out vec4 fragColor;
 
 // texture coordinates
@@ -151,7 +152,7 @@ void main() {
   vec3 normal = normalize(vNormal);
   vec3 light = -normalize(vLight - vCoord).xyz;
 
-#if 1
+#ifdef USE_PCF
   // sample light depth
   vec3 lightTextureCoords = vLightCoord.xyz / vLightCoord.w;
   lightTextureCoords = lightTextureCoords / 2.0 + 0.5;
