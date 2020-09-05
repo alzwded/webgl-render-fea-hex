@@ -5,7 +5,9 @@ var state = {
     animframe: 0,
     next: undefined,
     render: undefined,
-    colorAxisType: 1
+    colorAxisType: 1,
+    renderDepth: false
+
 }
 
 // nodes
@@ -171,7 +173,6 @@ function preproc()
             nodes[3 * quad[2] + 2])
     }
 
-    document.getElementById('progress').innerHTML = ''
     return {
         coords: coords,
         trias: trias,
@@ -274,9 +275,7 @@ async function setup_scene() {
 
 
         let loop = function _loop() {
-            let renderDepth = false
-
-            if(renderDepth) {
+            if(state.renderDepth) {
                 canvas.width = 1024
                 canvas.height = 1024
             } else {
@@ -321,7 +320,7 @@ async function setup_scene() {
 
             const lightTexture = gl.createTexture();
             let lightFrameBuffer = gl.createFramebuffer()
-            if(!renderDepth) {
+            if(!state.renderDepth) {
                 // create texture
                 gl.activeTexture(gl.TEXTURE0)
                 gl.bindTexture(gl.TEXTURE_2D, lightTexture);
@@ -345,7 +344,7 @@ async function setup_scene() {
             gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT)
             gl.drawElements(gl.TRIANGLES, mtriaslength, gl.UNSIGNED_INT, 0)
 
-            if(renderDepth) {
+            if(state.renderDepth) {
                 gl.bindTexture(gl.TEXTURE_2D, null)
                 requestAnimationFrame(loop)
                 return
@@ -532,6 +531,9 @@ function setDeformation(b) {
 function setColorAxis(n) {
     state.colorAxisType = n;
     document.getElementById('min').style.color = ['green', 'blue'][n];
+}
+function setRenderDepthDebug(b) {
+    state.renderDepth = b
 }
 
 window.onload = main

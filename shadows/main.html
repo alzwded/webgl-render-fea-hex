@@ -19,7 +19,9 @@
 <input type="button" onclick="setColorAxis(0)" value="Semaphore">
 <input type="button" onclick="setColorAxis(1)" value="Rainbow">
 <br/>
-<span id='progress'>Loading...</span>
+<input type="button" onclick="setRenderDepthDebug(true)" value="Show Shadow Map">
+<input type="button" onclick="setRenderDepthDebug(false)" value="Show Rendered Scene">
+<br/>
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
 // coordinates
 layout (location = 0) in vec3 aA;
@@ -149,11 +151,14 @@ void main() {
   float lightDepth = (c256_2 * lightTextureColor.r + c256 * lightTextureColor.g) / c256_2;
   //lightDepth = lightTextureColor.r;
   float myDepth = vLightCoord.z / 100.0; // uFarPlane
-  bool inShadow = myDepth >= lightDepth * 0.98;
-
 
   vec3 normal = normalize(vNormal);
   vec3 light = -normalize(vLight - vCoord).xyz;
+
+  const float magic = 0.1/65535.0;
+  float bias = max(magic * (1.0 - dot(light, normal)), magic);
+  bool inShadow = myDepth - bias > lightDepth;
+
   float diffuse = max(0.0, dot(light, normal));
   vec3 V = normalize(-vCoord.xyz);
   vec3 H = normalize(light + V);
