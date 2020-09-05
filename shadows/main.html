@@ -167,6 +167,47 @@ void main() {
   //fragColor = vec4(shiny, shiny, 0, 1);
 }
 </script>
+<script type="x-shader/x-vertex" id="vFinal">#version 300 es 
+layout (location = 0) in vec3 aCoords;
+layout (location = 1) in vec2 aTexCoords;
+// model-view-projection matrix
+uniform mat4 uMVP;
+// light source
+uniform vec3 uLight;
+
+// texture coordinates
+out vec2 vTexCoord;
+// light coordinates
+out vec4 vLight;
+
+void main() {
+  gl_Position = vec4(aCoords, 1.0);
+  vLight = uMVP * vec4(uLight, 1.0);
+  vTexCoord = aTexCoords;
+}
+</script>
+<script type="x-shader/x-fragment" id="fFinal">#version 300 es 
+precision mediump float;
+layout(location = 0) out vec4 fragColor;
+
+// texture coordinates
+in vec2 vTexCoord;
+in vec4 vLight;
+
+// rendered scene
+uniform sampler2D uSceneTexture;
+
+void main() {
+  //float blindingLight = max(distance(vLight.xy/vLight.w, vTexCoord.xy * 2.0 - 1.0) / sqrt(2.0), 1.0/65535.0);
+  float blindingLight = distance(vec2(vLight.x, -vLight.y)/vLight.w, vTexCoord.xy * 2.0 - 1.0) / length(vec2(2, 2));
+  blindingLight = 1.0 - blindingLight;
+  blindingLight = pow(blindingLight, 111.0);
+  fragColor = min(texture(uSceneTexture, vTexCoord) + vec4(1.0, 1.0, 0.0, blindingLight), vec4(1.0, 1.0, 1.0, 1.0));
+  fragColor = texture(uSceneTexture, vTexCoord) + blindingLight;
+  //fragColor = vec4(vLight.xy / vLight.w / 2.0 + 0.5, 0.0, 1.0);
+  //fragColor = vec4(blindingLight, 0.0, 0.0, 1.0);
+}
+</script>
 <script type="text/javascript" src="m4.js"></script>
 <script type="text/javascript" src="script.js"></script>
 </body>

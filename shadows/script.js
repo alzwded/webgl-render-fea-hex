@@ -238,6 +238,42 @@ async function setup_scene() {
     let mtriaslength = prim.trias.length
     prim = undefined
 
+    // we'll need these  in the render loop, but let's not spam openGL with requests
+    const lightTexture = gl.createTexture();
+    let lightFrameBuffer = gl.createFramebuffer()
+    const sceneTexture = gl.createTexture()
+
+    gl.bindTexture(gl.TEXTURE_2D, lightTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1024, 1024, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, null)
+
+    gl.bindTexture(gl.TEXTURE_2D, sceneTexture);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.bindTexture(gl.TEXTURE_2D, null)
+
+    
+    const singleTriangleBuffer = gl.createBuffer()
+    gl.bindBuffer(gl.ARRAY_BUFFER, singleTriangleBuffer)
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+      /* coords    texords */
+        -1, -1, 0, 0, 0, // T1
+         1, -1, 0, 1, 0,
+         1,  1, 0, 1, 1,
+        -1, -1, 0, 0, 0, // T2
+         1,  1, 0, 1, 1,
+        -1,  1, 0, 0, 1,
+    ]), gl.STATIC_DRAW)
+    gl.bindBuffer(gl.ARRAY_BUFFER, null)
+
+
     state.render = (() => {
         gl.useProgram(state.transformProgram)
 
@@ -273,7 +309,6 @@ async function setup_scene() {
         gl.bindBufferBase(gl.TRANSFORM_FEEDBACK_BUFFER, 0, null);
 
 
-
         let loop = function _loop() {
             if(state.renderDepth) {
                 canvas.width = 1024
@@ -301,7 +336,8 @@ async function setup_scene() {
             let translations = m4.identity()
             translations = m4.translate(translations, 0, 0, -10 * 1.41)
             let lightMV = m4.multiply(translations, rotations)
-            let lightPos = [-10 * 1.41, 0, 0, 1]
+            let lightPos = [0, 0, -10 * 1.41, 1]
+            lightPos = m4.transformVector(m4.yRotate(m4.identity(), 3.14159 / 2), lightPos)
             lightPos = m4.transformVector(m4.zRotate(m4.identity(), 45 / 360 * 2 * 3.14159), lightPos)
             lightPos = m4.transformVector(m4.yRotate(m4.identity(), state.animframe * 0.3/18), lightPos)
             // projection matrix
@@ -318,18 +354,9 @@ async function setup_scene() {
             gl.uniformMatrix4fv(gl.getUniformLocation(state.lightProgram, "uMVP"), false, lightMVP);
             gl.uniform1f(gl.getUniformLocation(state.lightProgram, "uFarPlane"), 100.0);
 
-            const lightTexture = gl.createTexture();
-            let lightFrameBuffer = gl.createFramebuffer()
             if(!state.renderDepth) {
                 // create texture
                 gl.activeTexture(gl.TEXTURE0)
-                gl.bindTexture(gl.TEXTURE_2D, lightTexture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1024, 1024, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-                gl.bindTexture(gl.TEXTURE_2D, null)
 
                 gl.bindFramebuffer(gl.FRAMEBUFFER, lightFrameBuffer);
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, lightTexture, 0) 
@@ -350,8 +377,6 @@ async function setup_scene() {
                 return
             }
 
-            gl.flush()
-
             gl.cullFace(gl.FRONT)
             //gl.disable(gl.CULL_FACE)
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
@@ -359,10 +384,15 @@ async function setup_scene() {
             //requestAnimationFrame(loop);
             //return
 
-            // === render pass ===
+            // === scene render pass ===
             // load program
             gl.useProgram(state.renderProgram)
             gl.viewport(0, 0, canvas.width, canvas.height)
+
+            gl.activeTexture(gl.TEXTURE1)
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, lightFrameBuffer);
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, sceneTexture, 0) 
 
             gl.activeTexture(gl.TEXTURE0)
             gl.bindTexture(gl.TEXTURE_2D, lightTexture);
@@ -389,7 +419,7 @@ async function setup_scene() {
     
             // model matrix
             let matrix = m4.identity()
-            matrix = m4.xRotate(matrix, 30 / 360 * 2 * 3.14159)
+            matrix = m4.xRotate(matrix, 90 / 360 * 2 * 3.14159)
             matrix = m4.scale(matrix, 1.0, 1.0, 1.0)
             // out light is actually tethered to the camera (overhead light, of sorts)
             const dist = 30
@@ -415,6 +445,35 @@ async function setup_scene() {
             gl.drawElements(gl.TRIANGLES, mtriaslength, gl.UNSIGNED_INT, 0)
 
             gl.bindTexture(gl.TEXTURE_2D, null)
+            gl.activeTexture(gl.TEXTURE1)
+            gl.bindTexture(gl.TEXTURE_2D, null)
+
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+
+            // ==== final render pass =====
+
+            gl.useProgram(state.finalProgram)
+            gl.disable(gl.DEPTH_TEST)
+            gl.disable(gl.CULL_FACE)
+
+            gl.activeTexture(gl.TEXTURE0)
+            gl.bindTexture(gl.TEXTURE_2D, sceneTexture)
+
+            gl.uniform1i(gl.getUniformLocation(state.finalProgram, "uSceneTexture"), 0);
+            gl.uniform3f(gl.getUniformLocation(state.finalProgram, "uLight"), lightPos[0], lightPos[1], lightPos[2]);
+            gl.uniformMatrix4fv(gl.getUniformLocation(state.finalProgram, "uMVP"), false, mvpMatrix)
+
+            gl.bindBuffer(gl.ARRAY_BUFFER, singleTriangleBuffer)
+            gl.vertexAttribPointer(0, 3, gl.FLOAT, false, 5 * 4, 0)
+            gl.enableVertexAttribArray(0)
+            gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 5 * 4, 3 * 4)
+            gl.enableVertexAttribArray(1)
+
+            gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT|gl.STENCIL_BUFFER_BIT)
+            gl.drawArrays(gl.TRIANGLES, 0, 6)
+
+            gl.enable(gl.DEPTH_TEST)
+            gl.enable(gl.CULL_FACE)
 
             //console.log((new Date()).getMilliseconds())
             requestAnimationFrame(state.next)
@@ -488,6 +547,21 @@ function main() {
     }
     state.fRender = fRender
 
+    let vFinal = gl.createShader(gl.VERTEX_SHADER)
+    gl.shaderSource(vFinal, document.getElementById('vFinal').textContent)
+    gl.compileShader(vFinal)
+    if(!gl.getShaderParameter(vFinal, gl.COMPILE_STATUS)) {
+        document.writeln('failed to compile vFinal: ' + gl.getShaderInfoLog(vFinal))
+    }
+    state.vFinal = vFinal
+    let fFinal = gl.createShader(gl.FRAGMENT_SHADER)
+    gl.shaderSource(fFinal, document.getElementById('fFinal').textContent)
+    gl.compileShader(fFinal)
+    if(!gl.getShaderParameter(fFinal, gl.COMPILE_STATUS)) {
+        document.writeln('failed to compile fFinal: ' + gl.getShaderInfoLog(fFinal))
+    }
+    state.fFinal = fFinal
+
 
     let transformProgram = gl.createProgram()
     gl.attachShader(transformProgram, vTransform)
@@ -508,6 +582,12 @@ function main() {
     gl.attachShader(lightProgram, fLight)
     gl.linkProgram(lightProgram)
     state.lightProgram = lightProgram
+
+    let finalProgram = gl.createProgram()
+    gl.attachShader(finalProgram, vFinal)
+    gl.attachShader(finalProgram, fFinal)
+    gl.linkProgram(finalProgram)
+    state.finalProgram = finalProgram
 
     // global stuff
     gl.clearColor(1.0, 0.0, 1.0, 0.0)
