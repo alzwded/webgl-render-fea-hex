@@ -366,7 +366,13 @@ async function setup_scene() {
             gl.vertexAttribPointer(aCoords, 3, gl.FLOAT, false, 0, 0)
             gl.enableVertexAttribArray(aCoords)
 
+            gl.bindBuffer(gl.ARRAY_BUFFER, tNormalsBuffer)
+            let aShadowNormals = 1;
+            gl.vertexAttribPointer(aShadowNormals, 3, gl.FLOAT, false, 0, 0)
+            gl.enableVertexAttribArray(aShadowNormals)
+
             gl.uniformMatrix4fv(gl.getUniformLocation(state.lightProgram, "uMVP"), false, lightMVP);
+            gl.uniformMatrix4fv(gl.getUniformLocation(state.lightProgram, "uMV"), false, lightMV);
             gl.uniform1f(gl.getUniformLocation(state.lightProgram, "uFarPlane"), 100.0);
 
             if(!state.renderDepth) {

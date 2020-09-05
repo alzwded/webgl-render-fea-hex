@@ -41,13 +41,19 @@ void main() {
 <script id="vLight" type="x-shader/x-vertex">#version 300 es 
 // coordinates
 layout (location = 0) in vec3 aCoords;
+layout (location = 1) in vec3 aNormal;
 // movel-view-projection matrix
 uniform mat4 uMVP;
+uniform mat4 uMV;
 
 out vec4 vCoord;
 void main() {
-  vCoord = uMVP * vec4(aCoords, 1.0);
-  gl_Position = uMVP * vec4(aCoords, 1.0);
+  vec3 pos = aCoords;
+  vec3 normal = (transpose(inverse(uMV)) * vec4(aNormal, 0.0)).xyz;
+  vec3 normalOffset = length(uMVP * vec4(aCoords, 1.0)) / 100.0 / 2.0 * aNormal * dot(normal, vec3(0, 0, -1));
+  normalOffset = length(uMV * vec4(aCoords, 1.0))/100.0 * aNormal * abs(dot(normal, vec3(0, 0, -1)));
+  vCoord = uMVP * vec4(aCoords - normalOffset, 1.0);
+  gl_Position = uMVP * vec4(aCoords - normalOffset, 1.0);
 }
 </script>
 <script id="fLight" type="x-shader/x-fragment">#version 300 es 
@@ -65,7 +71,7 @@ void main() {
   float val = vCoord.z / uFarPlane;
   float valInBigBase = c256_2 * val;
   fragColor = vec4(mod(floor(valInBigBase / 256.0), 256.0) / 256.0, mod(valInBigBase, 256.0) / 256.0, 0.0, 1.0);
-  //fragColor = vec4(val, 0, 0, 1.0);
+  //fragColor = vec4(val*2.0, 0, 0, 1.0);
 }
 </script>
 <script type="x-shader/x-vertex" id="vRender">#version 300 es 
