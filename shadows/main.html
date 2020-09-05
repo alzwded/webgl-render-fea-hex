@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body>
+<canvas id="c" width="800" height="600"></canvas>
+<br/>
+<input type="button" onclick="setValue(0)" value="X">
+<input type="button" onclick="setValue(1)" value="Y">
+<input type="button" onclick="setValue(2)" value="Z">
+<input type="button" onclick="setValue(3)" value="Magnitude">
+<br/>
+<input type="button" onclick="setDeformation(false)" value="Undeformed">
+<input type="button" onclick="setDeformation(true)" value="Show deformations">
+<br/>
+<p>Min: <span id="min" style="color:blue"></span>mm</p>
+<p>Max: <span id="max" style="color:red"></span>mm</p>
+<br/>
+<input type="button" onclick="setColorAxis(0)" value="Semaphore">
+<input type="button" onclick="setColorAxis(1)" value="Rainbow">
+<br/>
+<span id='progress'>Loading...</span>
+<script id="vTransform" type="x-shader/x-vertex">#version 300 es 
+// coordinates
+layout (location = 0) in vec3 aA;
+layout (location = 1) in vec3 aB;
+layout (location = 2) in vec3 aC;
+
+// write quad normal
+out vec4 vNormal;
+void main() {
+  // compute normal
+  vec3 ab = aB - aA;
+  vec3 ac = aC - aA;
+  vNormal = normalize(vec4(cross(normalize(ab), normalize(ac)), 0.0));
+  // write something to the pipeline
+  gl_Position = vec4(aA, 1.0);
+}
+</script>
+<script id="fTransform" type="x-shader/x-fragment">#version 300 es 
+precision mediump float;
+layout(location = 0) out vec4 fragColor;
+void main() {
+  // nop
+  fragColor = vec4(1, 1, 1, 1);
+}
+</script>
+<script id="vLight" type="x-shader/x-vertex">#version 300 es 
+// coordinates
+layout (location = 0) in vec3 aCoords;
+// movel-view-projection matrix
+uniform mat4 uMVP;
+
+out vec4 vCoord;
+void main() {
+  vCoord = uMVP * vec4(aCoords, 1.0);
+  gl_Position = uMVP * vec4(aCoords, 1.0);
+}
+</script>
+<script id="fLight" type="x-shader/x-fragment">#version 300 es 
+precision highp float;
+layout(location = 0) out vec4 fragColor;
+
+in vec4 vCoord;
+
+uniform float uFarPlane;
+
+void main() {
+  const float c256 = 256.0;
+  const float c256_2 = c256 * c256;
+  //float val = gl_FragCoord.z * gl_FragCoord.w;
+  float val = vCoord.z / uFarPlane;
+  float valInBigBase = c256_2 * val;
+  fragColor = vec4(mod(floor(valInBigBase / 256.0), 256.0) / 256.0, mod(valInBigBase, 256.0) / 256.0, 0.0, 1.0);
+  fragColor = vec4(val, 0, 0, 1.0);
+}
+</script>
+<script type="x-shader/x-vertex" id="vRender">#version 300 es 
+layout (location = 0) in vec3 aCoord;
+layout (location = 1) in vec4 aNormal;
+layout (location = 2) in vec2 aTexCoords;
+layout (location = 3) in vec4 aColor;
+// model-view matrix
+uniform mat4 uMatrix;
+// model-view-projection matrix
+uniform mat4 uMVP;
+// light matrix
+uniform mat4 uMVPLight;
+// light source
+uniform vec3 uLight;
+
+// texture coordinates
+out vec2 vTexCoord;
+out vec4 vColor;
+// diffuse lighting
+out float vLambertian;
+// eye coordinates
+out vec4 vCoord;
+// light coordinates
+out vec4 vLightCoord;
+// quad normal
+out vec4 vNormal;
+// light
+out vec4 vLight;
+
+void main() {
+  // forward texture coordinates
+  vTexCoord = aTexCoords;
+  vec4 coord = vec4(aCoord, 1.0);
+  // eye coordinates
+  vCoord = uMatrix * coord;
+  // light coordinates
+  vLightCoord = uMVPLight * coord;
+  // position
+  gl_Position = uMVP * coord;
+  // light position
+  vLight = uMatrix * vec4(uLight, 1.0);
+  // forward normal
+  vNormal = aNormal;
+  // forward color
+  vColor = aColor;
+  // compute diffuse lighting
+  vec4 lightDirection = vec4(normalize(vLight - vCoord).xyz, 0.0);
+  float vLambertian = max(dot(vNormal, lightDirection), 0.0);
+}
+</script>
+<script type="x-shader/x-fragment" id="fRender">#version 300 es 
+precision highp float;
+layout(location = 0) out vec4 fragColor;
+
+// texture coordinates
+in vec2 vTexCoord;
+in vec4 vColor;
+// diffuse lighting
+in float vLambertian;
+// eye coordinates
+in vec4 vCoord;
+// light coordinates
+in vec4 vLightCoord;
+// quad normal
+in vec4 vNormal;
+// light
+in vec4 vLight;
+
+// light map
+uniform sampler2D uLightMap;
+uniform vec2 uViewportWidth;
+
+void main() {
+  // sample light depth
+  vec3 lightTextureCoords = vLightCoord.xyz / vLightCoord.w;
+  vec4 lightTextureColor = texture(uLightMap, lightTextureCoords.xy);
+  lightTextureColor = texture(uLightMap, lightTextureCoords.xy / 2.0 + 0.5);
+  const float c256 = 256.0;
+  const float c256_2 = c256 * c256;
+  float lightDepth = (c256_2 * lightTextureColor.r + c256 * lightTextureColor.g) / c256_2;
+  lightDepth = lightTextureColor.r;
+  float myDepth = vLightCoord.z / 100.0; // uFarPlane
+  bool inShadow = myDepth > lightDepth;
+
+  // optional sexy lighting
+  vec3 normal = normalize(vNormal).xyz;
+  vec3 light = normalize(vLight - vCoord).xyz;
+  vec3 V = normalize(vCoord.xyz);
+  vec3 H = normalize(light + V);
+  float shiny = max(0.0, dot(H, normal));
+  shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
+
+  vec4 lighting = vec4(0.2, 0.2, 0.2, 1.0) + vLambertian * 0.3 * vec4(1.0, 1.0, 1.0, 1.0) + (inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(shiny, shiny, shiny, 1.0) * 0.5);
+  lighting = vec4(0.2, 0.2, 0.2, 1.0) + vLambertian * 0.3 * vec4(1.0, 1.0, 1.0, 1.0);
+  lighting = vec4(vLambertian, 0, 0, 1);
+
+  fragColor = vColor * lighting;
+  //fragColor = (lightTextureColor.a > 0.0) ? lightTextureColor : vec4(1.0, 1.0, 1.0, 1.0);
+  //fragColor = vec4(myDepth, 0.0, 0.0, 1.0);
+  //fragColor = vec4(lightTextureColor.xy, 0.0, 1.0);
+  
+  // debug specular lighting
+  //fragColor = vec4(shiny, shiny, 0, 1);
+}
+</script>
+<script type="text/javascript" src="m4.js"></script>
+<script type="text/javascript" src="script.js"></script>
+</body>
+</html>
