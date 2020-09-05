@@ -14,11 +14,10 @@
 <input type="button" onclick="setCamera('side30')" value="Side 30°">
 <br/>
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
-// coordinates
+// corner coordinates
 layout (location = 0) in vec3 aA;
 layout (location = 1) in vec3 aB;
 layout (location = 2) in vec3 aC;
-
 // write quad normal
 out vec3 vNormal;
 void main() {
@@ -41,17 +40,26 @@ void main() {
 <script id="vLight" type="x-shader/x-vertex">#version 300 es 
 // coordinates
 layout (location = 0) in vec3 aCoords;
+// normal to apply normal offset
 layout (location = 1) in vec3 aNormal;
 // movel-view-projection matrix
 uniform mat4 uMVP;
+// model-view matrix
 uniform mat4 uMV;
+// perspective far plane distance for normal offset
 uniform float uFarPlane;
-
+// distance to shadow-ish
 out vec4 vCoord;
 void main() {
-  vec3 pos = aCoords;
+  // need the normal in camera-space
   vec3 normal = (transpose(inverse(uMV)) * vec4(aNormal, 0.0)).xyz;
+  // normal offset is:
+  // - distance to P; normalized by farplane
+  // - on the normal direction
+  // - scaled by the angle between the normal and the light
+  // - but only the positive side, otherwise I don't want to push the corner on the outside
   vec3 normalOffset = length(uMV * vec4(aCoords, 1.0))/uFarPlane * aNormal * max(dot(normal, vec3(0, 0, -1)), 0.0);
+  // write out the distance to the shadow
   vCoord = uMVP * vec4(aCoords - normalOffset, 1.0);
   gl_Position = uMVP * vec4(aCoords - normalOffset, 1.0);
 }
@@ -136,6 +144,7 @@ in vec4 vLight;
 
 // light map
 uniform sampler2D uLightMap;
+// far plane in projection space, for normalizing myDepth
 uniform float uFarPlane;
 
 void main() {
@@ -165,18 +174,9 @@ void main() {
   shiny = (diffuse > 0.0 ? shiny : 0.0);
 
   vec4 lighting = vec4(0.2, 0.2, 0.2, 1.0)  + (inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(shiny, shiny, shiny, 1.0) * 0.5+ diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0));
-  //lighting = vec4(0.2, 0.2, 0.2, 1.0)  + (inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0)); // only on one side for some reason
-  //lighting = inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 1.0, 1.0, 1.0); // this works
+  //lighting = inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 1.0, 1.0, 1.0); // this works, and it's just the shadows, no lighting
 
   fragColor = vColor * lighting;
-  //fragColor = vec4(shiny, shiny, shiny, 1.0);
-  //fragColor = vec4(normal, 1.0);
-  //fragColor = (lightTextureColor.a > 0.0) ? lightTextureColor : vec4(1.0, 1.0, 1.0, 1.0);
-  //fragColor = vec4(myDepth, 0.0, 0.0, 1.0);
-  //fragColor = vec4(lightTextureColor.xy, 0.0, 1.0);
-  
-  // debug specular lighting
-  //fragColor = vec4(shiny, shiny, 0, 1);
 }
 </script>
 <script type="x-shader/x-vertex" id="vFinal">#version 300 es 
@@ -193,8 +193,10 @@ out vec2 vTexCoord;
 out vec4 vLight;
 
 void main() {
-  gl_Position = vec4(aCoords, 1.0);
+  // we need to know where on screen the light is
   vLight = uMVP * vec4(uLight, 1.0);
+  // daisy chain everything; we only have vertices in the four corners of the universe
+  gl_Position = vec4(aCoords, 1.0);
   vTexCoord = aTexCoords;
 }
 </script>
@@ -204,22 +206,24 @@ layout(location = 0) out vec4 fragColor;
 
 // texture coordinates
 in vec2 vTexCoord;
+// light position on screen
 in vec4 vLight;
 
 // rendered scene
 uniform sampler2D uSceneTexture;
 
 void main() {
-  //float blindingLight = max(distance(vLight.xy/vLight.w, vTexCoord.xy * 2.0 - 1.0) / sqrt(2.0), 1.0/65535.0);
+  // create a soft slope from the pixel the light is on, around it; we could add lense flare or something like that
   float blindingLight = distance(vec2(-vLight.x, -vLight.y)/vLight.w, vTexCoord.xy * 2.0 - 1.0) / length(vec2(2, 2));
   blindingLight = 1.0 - blindingLight;
   blindingLight = pow(blindingLight, 50.0);
+  // sample the color we actually have to draw
   vec4 sampledColor = texture(uSceneTexture, vTexCoord);
   vec4 lightColor = vec4(1.0, 1.0, 0.6, 1.0) * blindingLight;
+  // and write it out after clamping it to max
   fragColor = min(sampledColor + lightColor, vec4(1.0, 1.0, 1.0, 1.0));
-  //fragColor = texture(uSceneTexture, vTexCoord) + blindingLight;
-  //fragColor = vec4(vLight.xy / vLight.w / 2.0 + 0.5, 0.0, 1.0);
-  //fragColor = vec4(blindingLight, 0.0, 0.0, 1.0);
+  // NOTE: this doesn't check if the light is obscured by anything; that should be done elsewhere,
+  //       but for now I've positioned the light and camera in a way that it's never obscured by anything
 }
 </script>
 <script type="text/javascript" src="m4.js"></script>

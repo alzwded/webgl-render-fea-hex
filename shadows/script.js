@@ -402,7 +402,6 @@ async function setup_scene() {
             }
 
             gl.cullFace(gl.FRONT)
-            //gl.disable(gl.CULL_FACE)
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
             //requestAnimationFrame(loop);
@@ -503,33 +502,6 @@ async function setup_scene() {
 function setCamera(mode) {
     const canvas = document.getElementById('c')
     let aspect = canvas.width / canvas.height;
-/*
-    // model matrix
-    let matrix = m4.identity()
-    switch(mode) {
-    case 'top': 
-        matrix = m4.xRotate(matrix, 90 / 360 * 2 * 3.14159)
-        break;
-    case 'side30': 
-        matrix = m4.yRotate(matrix, 90 / 360 * 2 * 3.14159)
-        matrix = m4.xRotate(m4.identity(), 30 / 360 * 2 * 3.14159)
-        break;
-    case '30':
-        matrix = m4.xRotate(matrix, 30 / 360 * 2 * 3.14159)
-        break;
-    case 'iso':
-        matrix = m4.xRotate(matrix, 45 / 360 * 2 * 3.14159)
-        matrix = m4.yRotate(matrix, 45 / 360 * 2 * 3.14159)
-        break;
-    }
-    matrix = m4.scale(matrix, 1.0, 1.0, 1.0)
-    // out light is actually tethered to the camera (overhead light, of sorts)
-    const dist = 30
-    let viewMatrix = m4.translate(m4.identity(), 0, 0, -dist)
-    // apply view matrix to get model-view matrix
-    matrix = m4.multiply(viewMatrix, matrix)
-    */
-
     const dist = 30
     let matrix = m4.identity()
     let pos = [0, 0, -dist]
