@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+<body style="background-color:#DEE">
+<canvas id="c" width="800" height="600"></canvas>
+<br/>
+<input type="button" onclick="setRenderDepthDebug(true)" value="Show Shadow Map">
+<input type="button" onclick="setRenderDepthDebug(false)" value="Show Rendered Scene">
+<br/>
+<input type="button" onclick="setCamera('top')" value="Top">
+<input type="button" onclick="setCamera('30')" value="Front 30°">
+<input type="button" onclick="setCamera('iso')" value="Isometric">
+<input type="button" onclick="setCamera('side30')" value="Side 30°">
+<br/>
+<script id="vTransform" type="x-shader/x-vertex">#version 300 es 
+// corner coordinates
+layout (location = 0) in vec3 aA;
+layout (location = 1) in vec3 aB;
+layout (location = 2) in vec3 aC;
+// write quad normal
+out vec3 vNormal;
+void main() {
+  // compute normal
+  vec3 ab = aB - aA;
+  vec3 ac = aC - aA;
+  vNormal = normalize(cross(normalize(ac), normalize(ab)));
+  // write something to the pipeline
+  gl_Position = vec4(aA, 1.0);
+}
+</script>
+<script id="fTransform" type="x-shader/x-fragment">#version 300 es 
+precision mediump float;
+layout(location = 0) out vec4 fragColor;
+void main() {
+  // nop
+  fragColor = vec4(1, 1, 1, 1);
+}
+</script>
+<script id="vLight" type="x-shader/x-vertex">#version 300 es 
+// coordinates
+layout (location = 0) in vec3 aCoords;
+// normal to apply normal offset
+layout (location = 1) in vec3 aNormal;
+// movel-view-projection matrix
+uniform mat4 uMVP;
+// model-view matrix
+uniform mat4 uMV;
+// perspective far plane distance for normal offset
+uniform float uFarPlane;
+// distance to shadow-ish
+out vec4 vCoord;
+void main() {
+  // need the normal in camera-space
+  vec3 normal = (transpose(inverse(uMV)) * vec4(aNormal, 0.0)).xyz;
+  // normal offset is:
+  // - distance to P; normalized by farplane
+  // - on the normal direction
+  // - scaled by the angle between the normal and the light
+  // - but only the positive side, otherwise I don't want to push the corner on the outside
+  vec3 normalOffset = length(uMV * vec4(aCoords, 1.0))/uFarPlane * aNormal * max(dot(normal, vec3(0, 0, -1)), 0.0);
+  // write out the distance to the shadow
+  vCoord = uMVP * vec4(aCoords - normalOffset, 1.0);
+  gl_Position = uMVP * vec4(aCoords - normalOffset, 1.0);
+}
+</script>
+<script id="fLight" type="x-shader/x-fragment">#version 300 es 
+precision highp float;
+layout(location = 0) out vec4 fragColor;
+
+in vec4 vCoord;
+
+uniform float uFarPlane;
+
+void main() {
+  const float c256 = 256.0;
+  const float c256_2 = c256 * c256;
+  //float val = gl_FragCoord.z * gl_FragCoord.w;
+  float val = vCoord.z / uFarPlane;
+  float valInBigBase = c256_2 * val;
+  fragColor = vec4(mod(floor(valInBigBase / 256.0), 256.0) / 256.0, mod(valInBigBase, 256.0) / 256.0, 0.0, 1.0);
+  //fragColor = vec4(val*2.0, 0, 0, 1.0);
+}
+</script>
+<script type="x-shader/x-vertex" id="vRender">#version 300 es 
+layout (location = 0) in vec3 aCoord;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aTexCoords;
+layout (location = 3) in vec4 aColor;
+// model-view matrix
+uniform mat4 uMatrix;
+// model-view-projection matrix
+uniform mat4 uMVP;
+// light matrix
+uniform mat4 uMVPLight;
+// light source
+uniform vec3 uLight;
+
+// texture coordinates
+out vec2 vTexCoord;
+out vec4 vColor;
+// eye coordinates
+out vec4 vCoord;
+// light coordinates
+out vec4 vLightCoord;
+// quad normal
+out vec3 vNormal;
+// light
+out vec4 vLight;
+
+void main() {
+  // forward texture coordinates
+  vTexCoord = aTexCoords;
+  vec4 coord = vec4(aCoord, 1.0);
+  // eye coordinates
+  vCoord = uMatrix * coord;
+  // light coordinates
+  vLightCoord = uMVPLight * coord;
+  // position
+  gl_Position = uMVP * coord;
+  // light position
+  vLight = uMatrix * vec4(uLight, 1.0);
+  // forward normal
+  vNormal = normalize(transpose(inverse(uMatrix)) * vec4(aNormal, 0.0)).xyz;
+  // forward color
+  vColor = aColor;
+}
+</script>
+<script type="x-shader/x-fragment" id="fRender">#version 300 es 
+precision highp float;
+layout(location = 0) out vec4 fragColor;
+
+// texture coordinates
+in vec2 vTexCoord;
+in vec4 vColor;
+// eye coordinates
+in vec4 vCoord;
+// light coordinates
+in vec4 vLightCoord;
+// quad normal
+in vec3 vNormal;
+// light
+in vec4 vLight;
+
+// light map
+uniform sampler2D uLightMap;
+// far plane in projection space, for normalizing myDepth
+uniform float uFarPlane;
+
+void main() {
+  vec3 normal = normalize(vNormal);
+  vec3 light = -normalize(vLight - vCoord).xyz;
+
+#if 1
+  // sample light depth
+  vec3 lightTextureCoords = vLightCoord.xyz / vLightCoord.w;
+  lightTextureCoords = lightTextureCoords / 2.0 + 0.5;
+  vec2 texelSize = 1.0 / vec2(textureSize(uLightMap, 0).xy);
+  const float c256 = 256.0;
+  const float c256_2 = c256 * c256;
+  float myDepth = vLightCoord.z / uFarPlane;
+  const float magic = 1.0/65535.0;
+  float bias = max(magic * (1.0 - dot(light, normal)), magic);
+  float shadow = 0.0;
+  const int L_2 = 2;
+  for(int x = -L_2; x <= L_2; ++x) {
+    for(int y = -L_2; y <= L_2; ++y) {
+      vec4 lightTextureColor = texture(uLightMap, lightTextureCoords.xy + vec2(x, y) * texelSize);
+      float lightDepth = (c256_2 * lightTextureColor.r + c256 * lightTextureColor.g) / c256_2;
+      shadow = shadow + (myDepth - bias > lightDepth ? 1.0 : 0.0);
+    }
+  }
+  shadow /= float((L_2 * 2 + 1) * (L_2 * 2 + 1));
+#else
+
+  // sample light depth
+  vec3 lightTextureCoords = vLightCoord.xyz / vLightCoord.w;
+  lightTextureCoords = lightTextureCoords / 2.0 + 0.5;
+  vec4 lightTextureColor = texture(uLightMap, lightTextureCoords.xy);
+  lightTextureColor = texture(uLightMap, lightTextureCoords.xy);
+  const float c256 = 256.0;
+  const float c256_2 = c256 * c256;
+  float lightDepth = (c256_2 * lightTextureColor.r + c256 * lightTextureColor.g) / c256_2;
+  //lightDepth = lightTextureColor.r;
+  float myDepth = vLightCoord.z / uFarPlane;
+
+  const float magic = 1.0/65535.0;
+  float bias = max(magic * (1.0 - dot(light, normal)), magic);
+  bool inShadow = myDepth - bias > lightDepth;
+  float shadow = inShadow ? 1.0 : 0.0;
+#endif
+
+  float diffuse = max(0.0, dot(light, normal));
+  vec3 V = normalize(-vCoord.xyz);
+  vec3 H = normalize(light + V);
+  float shiny = max(0.0, dot(H, normal));
+  shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
+  shiny = (diffuse > 0.0 ? shiny : 0.0);
+
+  vec4 lighting = vec4(0.2, 0.2, 0.2, 1.0)  + (1.0 - shadow) * (vec4(shiny, shiny, shiny, 1.0) * 0.5+ diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0));
+  //lighting = inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 1.0, 1.0, 1.0); // this works, and it's just the shadows, no lighting
+
+  fragColor = vColor * lighting;
+  //fragColor = vec4(shadow, 0.0, 0.0, 1.0);
+}
+</script>
+<script type="x-shader/x-vertex" id="vFinal">#version 300 es 
+layout (location = 0) in vec3 aCoords;
+layout (location = 1) in vec2 aTexCoords;
+// model-view-projection matrix
+uniform mat4 uMVP;
+// light source
+uniform vec3 uLight;
+
+// texture coordinates
+out vec2 vTexCoord;
+// light coordinates
+out vec4 vLight;
+
+void main() {
+  // we need to know where on screen the light is
+  vLight = uMVP * vec4(uLight, 1.0);
+  // daisy chain everything; we only have vertices in the four corners of the universe
+  gl_Position = vec4(aCoords, 1.0);
+  vTexCoord = aTexCoords;
+}
+</script>
+<script type="x-shader/x-fragment" id="fFinal">#version 300 es 
+precision mediump float;
+layout(location = 0) out vec4 fragColor;
+
+// texture coordinates
+in vec2 vTexCoord;
+// light position on screen
+in vec4 vLight;
+
+// rendered scene
+uniform sampler2D uSceneTexture;
+
+void main() {
+  // create a soft slope from the pixel the light is on, around it; we could add lense flare or something like that
+  float blindingLight = distance(vec2(-vLight.x, -vLight.y)/vLight.w, vTexCoord.xy * 2.0 - 1.0) / length(vec2(2, 2));
+  blindingLight = 1.0 - blindingLight;
+  blindingLight = pow(blindingLight, 50.0);
+  // sample the color we actually have to draw
+  vec4 sampledColor = texture(uSceneTexture, vTexCoord);
+  vec4 lightColor = vec4(1.0, 1.0, 0.6, 1.0) * blindingLight;
+  // and write it out after clamping it to max
+  fragColor = min(sampledColor + lightColor, vec4(1.0, 1.0, 1.0, 1.0));
+  // NOTE: this doesn't check if the light is obscured by anything; that should be done elsewhere,
+  //       but for now I've positioned the light and camera in a way that it's never obscured by anything
+}
+</script>
+<script type="text/javascript" src="../m4.js"></script>
+<script type="text/javascript" src="../script.js"></script>
+</body>
+</html>
