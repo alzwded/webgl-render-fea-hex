@@ -13,4 +13,4 @@ alzwded's WebGL Experiments
 
 And here's something that's not scientific visualization: 
 + [shadow map~~s~~ (okay, just one)](./shadows/pcf/main.html).
-+ and here's the same thing, but with [light occlusion](./shadows/pcfPlusLightOcclusion/main.html), which is not working very well for some reason.
++ and here's the same thing, but with [light occlusion](./shadows/pcfPlusLightOcclusion/main.html)!

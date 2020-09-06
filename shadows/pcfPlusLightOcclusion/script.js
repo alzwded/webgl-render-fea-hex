@@ -313,6 +313,7 @@ async function setup_scene() {
     let lightFrameBuffer = gl.createFramebuffer()
     const sceneTexture = gl.createTexture()
     const depthTexture = gl.createTexture()
+    const tempDepthBuffer = gl.createRenderbuffer()
 
     const MAX_TEXTURE_SIZE = gl.getParameter(gl.MAX_TEXTURE_SIZE)
     const lightTextureSize = state.hiRes ? (MAX_TEXTURE_SIZE >= 4096 ? 4096 : (MAX_TEXTURE_SIZE >= 1024 ? 1024 : (MAX_TEXTURE_SIZE))) : 1024;
@@ -332,6 +333,10 @@ async function setup_scene() {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     }
     gl.bindTexture(gl.TEXTURE_2D, null)
+
+    gl.bindRenderbuffer(gl.RENDERBUFFER, tempDepthBuffer)
+    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, lightTextureSize, lightTextureSize)
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null)
 
     gl.bindTexture(gl.TEXTURE_2D, sceneTexture);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, canvas.width, canvas.height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
@@ -403,7 +408,6 @@ async function setup_scene() {
 
             const farPlane = 100.0
 
-            gl.enable(gl.DEPTH_TEST)
             if(state.renderDepth) {
                 canvas.width = lightTextureSize
                 canvas.height = lightTextureSize
@@ -458,10 +462,12 @@ async function setup_scene() {
 
                 gl.bindFramebuffer(gl.FRAMEBUFFER, lightFrameBuffer);
                 gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, lightTexture, 0) 
+                gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, tempDepthBuffer)
             }
 
             gl.cullFace(gl.BACK)
             gl.enable(gl.CULL_FACE)
+            gl.enable(gl.DEPTH_TEST)
 
             gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, triaBuffer)
 
@@ -475,9 +481,10 @@ async function setup_scene() {
                 return
             }
 
+            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, null, 0)
+            gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null)
             gl.bindFramebuffer(gl.FRAMEBUFFER, null);
             gl.cullFace(gl.FRONT)
-            gl.flush()
 
             //requestAnimationFrame(loop);
             //return
