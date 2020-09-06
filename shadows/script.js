@@ -6,8 +6,8 @@ var state = {
     next: undefined,
     render: undefined,
     colorAxisType: 1,
-    renderDepth: false
-
+    renderDepth: false,
+    hiRes: false
 }
 
 const camera = {
@@ -44,31 +44,71 @@ var nodes = [
     /* 17 */ 7.0, 4.0, -2.0,
     /* 18 */ 7.0, 4.0, 2.0,
     /* 19 */ 3.0, 4.0, 2.0,
-    // - fake bottom // excellent map design there
+    // fake bottom // excellent map design there
     /* 20 */ -14.1, -1.0, -14.1,
     /* 21 */ 14.1, -1.0, -14.1,
     /* 22 */ 14.1, -1.0, 14.1,
     /* 23 */ -14.1, -1.0, 14.1,
+    // pillar1
+    // - bottom
+    /* 24 */ -3.0, 3.8, 1.8-0.2,
+    /* 25 */  3.0, 3.8, 1.8-0.2,
+    /* 26 */  3.0, 3.8, 1.8+0.2,
+    /* 27 */ -3.0, 3.8, 1.8+0.2,
+    // - top
+    /* 28 */ -3.0, 4.0, 1.8-0.2,
+    /* 29 */  3.0, 4.0, 1.8-0.2,
+    /* 30 */  3.0, 4.0, 1.8+0.2,
+    /* 31 */ -3.0, 4.0, 1.8+0.2,
+    // pillar2
+    // - bottom
+    /* 32 */ -3.0, 3.8, -1.8-0.2,
+    /* 33 */  3.0, 3.8, -1.8-0.2,
+    /* 34 */  3.0, 3.8, -1.8+0.2,
+    /* 35 */ -3.0, 3.8, -1.8+0.2,
+    // - top
+    /* 36 */ -3.0, 4.0, -1.8-0.2,
+    /* 37 */  3.0, 4.0, -1.8-0.2,
+    /* 38 */  3.0, 4.0, -1.8+0.2,
+    /* 39 */ -3.0, 4.0, -1.8+0.2,
 ]
 
+// FIXME pre-sorted quads
 var quads = [
     // base
     [0, 1, 2, 3],
     [20, 23, 22, 21],
     // cube1
     [4+3, 4+2, 4+1, 4+0],
-    [4+4, 4+5, 4+6, 4+7],
-    [4+0, 4+1, 4+5, 4+4],
     [4+1, 4+2, 4+6, 4+5],
     [4+2, 4+3, 4+7, 4+6],
     [4+3, 4+0, 4+4, 4+7],
     // cube2
     [12+3, 12+2, 12+1, 12+0],
-    [12+4, 12+5, 12+6, 12+7],
     [12+0, 12+1, 12+5, 12+4],
     [12+1, 12+2, 12+6, 12+5],
     [12+2, 12+3, 12+7, 12+6],
     [12+3, 12+0, 12+4, 12+7],
+    // pillar1
+    [24+3, 24+2, 24+1, 24+0],
+    [24+4, 24+5, 24+6, 24+7],
+    [24+0, 24+1, 24+5, 24+4],
+    [24+1, 24+2, 24+6, 24+5],
+    [24+2, 24+3, 24+7, 24+6],
+    [24+3, 24+0, 24+4, 24+7],
+    // pillar2
+    [32+3, 32+2, 32+1, 32+0],
+    [32+4, 32+5, 32+6, 32+7],
+    [32+0, 32+1, 32+5, 32+4],
+    [32+1, 32+2, 32+6, 32+5],
+    [32+2, 32+3, 32+7, 32+6],
+    [32+3, 32+0, 32+4, 32+7],
+    // - cube1 back
+    [4+0, 4+1, 4+5, 4+4],
+    // - cube1 top
+    [4+4, 4+5, 4+6, 4+7],
+    // - cube2 top
+    [12+4, 12+5, 12+6, 12+7],
 ]
 
 var colors = [
@@ -81,14 +121,31 @@ var colors = [
     [0.7, 0.7, 0.2, 1.0],
     [0.7, 0.7, 0.2, 1.0],
     [0.7, 0.7, 0.2, 1.0],
-    [0.7, 0.7, 0.2, 1.0],
-    [0.7, 0.7, 0.2, 1.0],
     // cube2
     [0.2, 0.7, 0.7, 1.0],
     [0.2, 0.7, 0.7, 1.0],
     [0.2, 0.7, 0.7, 1.0],
     [0.2, 0.7, 0.7, 1.0],
     [0.2, 0.7, 0.7, 1.0],
+    // pillar1
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    // pillar2
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    [0.7, 0.2, 0.2, 1.0],
+    // cube1 back
+    [0.7, 0.7, 0.2, 1.0],
+    // cube1 top
+    [0.7, 0.7, 0.2, 1.0],
+    // cube2 top
     [0.2, 0.7, 0.7, 1.0],
 ]
 
@@ -256,12 +313,25 @@ async function setup_scene() {
     let lightFrameBuffer = gl.createFramebuffer()
     const sceneTexture = gl.createTexture()
 
+    const MAX_TEXTURE_SIZE = gl.getParameter(gl.MAX_TEXTURE_SIZE)
+    const lightTextureSize = state.hiRes ? (MAX_TEXTURE_SIZE > 8000 ? 4096 : (MAX_TEXTURE_SIZE >= 1024 ? 1024 : (MAX_TEXTURE_SIZE))) : 1024;
+    const L2forPCF = (lightTextureSize > 2048) ? 6 : (lightTextureSize >= 1024 ? 2 : 1)
+
     gl.bindTexture(gl.TEXTURE_2D, lightTexture);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1024, 1024, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, lightTextureSize, lightTextureSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    const useMipmaps = false
+    if(useMipmaps) {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+        gl.generateMipmap(gl.TEXTURE_2D)
+    } else {
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_MODE, gl.COMPARE_REF_TO_TEXTURE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_COMPARE_FUNC, gl.LEQUAL);
+    }
     gl.bindTexture(gl.TEXTURE_2D, null)
 
     gl.bindTexture(gl.TEXTURE_2D, sceneTexture);
@@ -328,8 +398,8 @@ async function setup_scene() {
 
             gl.enable(gl.DEPTH_TEST)
             if(state.renderDepth) {
-                canvas.width = 1024
-                canvas.height = 1024
+                canvas.width = lightTextureSize
+                canvas.height = lightTextureSize
             } else {
                 canvas.width = 800
                 canvas.height = 600
@@ -337,7 +407,7 @@ async function setup_scene() {
 
             // === compute shadow map for our one light ===
             gl.useProgram(state.lightProgram)
-            gl.viewport(0, 0, 1024, 1024)
+            gl.viewport(0, 0, lightTextureSize, lightTextureSize)
             //gl.viewport(0, 0, canvas.width, canvas.height)
  
             // Compute the matrices
@@ -419,6 +489,9 @@ async function setup_scene() {
 
             gl.activeTexture(gl.TEXTURE0)
             gl.bindTexture(gl.TEXTURE_2D, lightTexture);
+            if(useMipmaps) {
+                gl.generateMipmap(gl.TEXTURE_2D)
+            }
     
             // assign inputs
             gl.bindBuffer(gl.ARRAY_BUFFER, coordsBuffer)
@@ -449,6 +522,8 @@ async function setup_scene() {
             gl.uniformMatrix4fv(gl.getUniformLocation(state.renderProgram, "uMVPLight"), false, lightMVP)
             gl.uniform1i(gl.getUniformLocation(state.renderProgram, "uLightMap"), 0);
             gl.uniform1f(gl.getUniformLocation(state.renderProgram, "uFarPlane"), farPlane);
+            let uL_2 = gl.getUniformLocation(state.renderProgram, "uL_2")
+            if(uL_2) gl.uniform1i(gl.getUniformLocation(state.renderProgram, "uL_2"), L2forPCF);
     
             // draw
             gl.enable(gl.DEPTH_TEST)
@@ -673,6 +748,10 @@ function setColorAxis(n) {
 }
 function setRenderDepthDebug(b) {
     state.renderDepth = b
+}
+function setHiRez(b) {
+    state.hiRes = b
+    state.next = setup_scene
 }
 
 window.onload = main

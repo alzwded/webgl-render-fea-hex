@@ -13,6 +13,9 @@
 <input type="button" onclick="setCamera('iso')" value="Isometric">
 <input type="button" onclick="setCamera('side30')" value="Side 30°">
 <br/>
+<input type="button" onclick="setHiRez(true)" value="Use High Res Shadow Map">
+<input type="button" onclick="setHiRez(false)" value="Use Standard Shadow Map">
+<br/>
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
 // corner coordinates
 layout (location = 0) in vec3 aA;

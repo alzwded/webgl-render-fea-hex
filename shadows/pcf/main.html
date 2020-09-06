@@ -13,6 +13,9 @@
 <input type="button" onclick="setCamera('iso')" value="Isometric">
 <input type="button" onclick="setCamera('side30')" value="Side 30°">
 <br/>
+<input type="button" onclick="setHiRez(true)" value="Use High Res Shadow Map">
+<input type="button" onclick="setHiRez(false)" value="Use Standard Shadow Map">
+<br/>
 <script id="vTransform" type="x-shader/x-vertex">#version 300 es 
 // corner coordinates
 layout (location = 0) in vec3 aA;
@@ -148,6 +151,8 @@ uniform sampler2D uLightMap;
 // far plane in projection space, for normalizing myDepth
 uniform float uFarPlane;
 
+uniform int uL_2;
+
 void main() {
   vec3 normal = normalize(vNormal);
   vec3 light = -normalize(vLight - vCoord).xyz;
@@ -163,12 +168,12 @@ void main() {
   const float magic = 1.0/65535.0;
   float bias = max(magic * (1.0 - dot(light, normal)), magic);
   float shadow = 0.0;
-  const int L_2 = 2;
+  int L_2 = uL_2;
   for(int x = -L_2; x <= L_2; ++x) {
     for(int y = -L_2; y <= L_2; ++y) {
       vec4 lightTextureColor = texture(uLightMap, lightTextureCoords.xy + vec2(x, y) * texelSize);
       float lightDepth = (c256_2 * lightTextureColor.r + c256 * lightTextureColor.g) / c256_2;
-      shadow = shadow + (myDepth - bias > lightDepth ? 1.0 : 0.0);
+      shadow = shadow + abs(1.0 - float(x) / float(L_2 + 1)) * abs(1.0 - float(y) / float(L_2+1)) * (myDepth - bias > lightDepth ? 1.0 : 0.0);
     }
   }
   shadow /= float((L_2 * 2 + 1) * (L_2 * 2 + 1));
@@ -196,7 +201,7 @@ void main() {
   vec3 H = normalize(light + V);
   float shiny = max(0.0, dot(H, normal));
   shiny = shiny * shiny * shiny * shiny * shiny * shiny * shiny * shiny;
-  shiny = (diffuse > 0.0 ? shiny : 0.0);
+  //shiny = (diffuse > 0.0 ? shiny : 0.0);
 
   vec4 lighting = vec4(0.2, 0.2, 0.2, 1.0)  + (1.0 - shadow) * (vec4(shiny, shiny, shiny, 1.0) * 0.5+ diffuse * 0.3 * vec4(1.0, 1.0, 1.0, 1.0));
   //lighting = inShadow ? vec4(0.0, 0.0, 0.0, 1.0) : vec4(1.0, 1.0, 1.0, 1.0); // this works, and it's just the shadows, no lighting
