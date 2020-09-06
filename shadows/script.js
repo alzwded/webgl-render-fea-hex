@@ -314,7 +314,7 @@ async function setup_scene() {
     const sceneTexture = gl.createTexture()
 
     const MAX_TEXTURE_SIZE = gl.getParameter(gl.MAX_TEXTURE_SIZE)
-    const lightTextureSize = state.hiRes ? (MAX_TEXTURE_SIZE > 8000 ? 4096 : (MAX_TEXTURE_SIZE >= 1024 ? 1024 : (MAX_TEXTURE_SIZE))) : 1024;
+    const lightTextureSize = state.hiRes ? (MAX_TEXTURE_SIZE >= 4096 ? 4096 : (MAX_TEXTURE_SIZE >= 1024 ? 1024 : (MAX_TEXTURE_SIZE))) : 1024;
     const L2forPCF = (lightTextureSize > 2048) ? 6 : (lightTextureSize >= 1024 ? 2 : 1)
 
     gl.bindTexture(gl.TEXTURE_2D, lightTexture);
